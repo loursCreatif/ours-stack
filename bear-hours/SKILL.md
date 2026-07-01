@@ -236,7 +236,7 @@ After writing `brief.md`, register the study in the global index:
 
 Tell the user:
 - Slug and path to `brief.md`
-- Next step: read sources listed in the brief (paste a URL or ask the agent to read one) — stay inside the wedge
+- Next step: `/study-session` with a source from the brief (paste a URL or pick from `## Source material`) — stay inside the wedge
 - Remind: deep over wide — resist scope creep beyond the wedge
 
 ## Rules
