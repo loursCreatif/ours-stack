@@ -35,7 +35,7 @@ Cross-session memory: `~/.ours-stack/learnings.jsonl`
 
 | Skill | When to use |
 |-------|-------------|
-| `/bear-hours` | New topic, "what should I learn?", scope unclear |
+| `/bear-hours` | New topic, "what should I learn?", scope unclear — optional local scan (`studies/` + learnings), then `AskUserQuestion` one at a time |
 | `/dense-read` | Paper, chapter, dense doc, URL, PDF, or pasted text |
 | `/checkpoint-learnings` | End of session, pause, resume, "where was I?" |
 
