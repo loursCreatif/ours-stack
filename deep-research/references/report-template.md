@@ -8,8 +8,22 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 **Slug:** <slug>
 **Question:** <one-sentence research question>
 **Researched:** <YYYY-MM-DD>
-**Depth:** quick | standard | exhaustive
+**Depth:** quick | standard | literature-review
 **Study link:** <studies/<slug>/ or none>
+**Full source index:** <research/<slug>/sources-index.md>
+
+## Screening funnel
+
+| Stage | Count |
+|-------|-------|
+| Discovered (logged) | <N> |
+| Screened — included | <N> |
+| Screened — excluded | <N> |
+| Eligible | <N> |
+| Read in depth | <N> |
+| Cited in synthesis | <N> |
+
+<If literature-review and N_discovered < 150: note shortfall + missing query angles>
 
 ## Executive summary
 
@@ -42,21 +56,27 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 
 ## Source map
 
+> Full audit trail (all discovered sources + exclude reasons): `sources-index.md`
+
 ### Read in depth
 
 | Source | Tier | Access | Why selected |
 |--------|------|--------|--------------|
 | Author (year) — *Title* — URL | 1 | open | ... |
 
-### Skimmed / supporting
+### Eligible — not read (capacity / redundancy)
 
-| Source | Tier | Access | Contribution |
-|--------|------|--------|--------------|
-| ... | 2 | paywall | ... |
+| Source | Tier | Why not deep-read |
+|--------|------|-------------------|
+| ... | 2 | Covered by survey X |
 
-### Considered but skipped
+### Exclusion summary (top reasons)
 
-- *Title* — URL — <reason: off-topic, redundant, low tier, paywall>
+| Reason code | Count | Example |
+|-------------|-------|---------|
+| OFF_TOPIC | <N> | ... |
+| DUPLICATE | <N> | ... |
+| LOW_TIER | <N> | ... |
 
 ## Open questions
 

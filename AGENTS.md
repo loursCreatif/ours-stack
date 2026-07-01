@@ -25,7 +25,8 @@ Standalone deep research (no brief required):
 
 ```
 research/<slug>/
-└── report.md       # /deep-research
+├── report.md           # /deep-research — synthesis
+└── sources-index.md    # /deep-research — full screening log (150–250+ in literature-review mode)
 ```
 
 ### Cross-session memory
@@ -50,7 +51,7 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 |-------|-------------|
 | `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 7 framing questions (incl. source material), confirm slug before reuse |
 | `/source-scout` | Brief exists, `## Source material` is TBD or thin — wedge-locked parallel search, ranked anchor + core list written to brief |
-| `/deep-research` | Standalone — any research question; finds best sources, reads them, writes synthesis report. No brief required. Optional link to `studies/<slug>/` |
+| `/deep-research` | Standalone — classic funnel: 150–250+ sources discovered & screened (default), 15–25 read in depth, synthesis report + `sources-index.md`. No brief required |
 
 ## Routing
 
