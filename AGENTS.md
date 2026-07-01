@@ -17,7 +17,15 @@ Every study uses the same layout:
 
 ```
 studies/<slug>/
-└── brief.md        # /bear-hours
+├── brief.md        # /bear-hours
+└── research.md     # /deep-research (optional, when linked to study)
+```
+
+Standalone deep research (no brief required):
+
+```
+research/<slug>/
+└── report.md       # /deep-research
 ```
 
 ### Cross-session memory
@@ -41,11 +49,16 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 | Skill | When to use |
 |-------|-------------|
 | `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 7 framing questions (incl. source material), confirm slug before reuse |
+| `/source-scout` | Brief exists, `## Source material` is TBD or thin — wedge-locked parallel search, ranked anchor + core list written to brief |
+| `/deep-research` | Standalone — any research question; finds best sources, reads them, writes synthesis report. No brief required. Optional link to `studies/<slug>/` |
 
 ## Routing
 
 - User shares a learning goal without a plan → `/bear-hours`
 - User shares paper/chapter/URL without a brief → `/bear-hours` first
+- Brief exists, sources missing or "TBD" → `/source-scout`
+- User wants depth + summary on a topic (not framed as a study wedge) → `/deep-research` — **not** auto-chained from other skills
+- User has anchor source and wants dense extraction → future `/dense-read`
 - User has a brief and wants to publish → future `/proof-draft`
 
 ## Privacy

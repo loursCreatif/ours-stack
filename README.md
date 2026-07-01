@@ -19,15 +19,23 @@ Works in **Claude Code** and **Grok Build** (Grok reads `~/.claude/skills/` auto
 
 ```
 /bear-hours      → frame the topic      → studies/<slug>/brief.md
+/source-scout    → find sources         → updates ## Source material in brief.md
+/deep-research   → research + summary   → research/<slug>/report.md (standalone)
 ```
+
+`/deep-research` is **standalone** — invoke it directly on any question; no pipeline required.
 
 Cross-project memory lives in `~/.ours-stack/studies-index.jsonl`. `./setup` backfills existing `studies/` into the index.
 
-Example:
+Examples:
 
 ```
 /bear-hours I want to understand how gstack structures its skills
+/source-scout robotique-assemblage-structurel
+/deep-research What are the best approaches for structural assembly robots on construction sites?
 ```
+
+Test v1: open `studies/robotique-assemblage-structurel/brief.md` — `## Source material` should list an anchor + core sources after scout.
 
 Details: [AGENTS.md](AGENTS.md)
 
