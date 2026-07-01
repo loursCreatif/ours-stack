@@ -8,7 +8,7 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 **Slug:** <slug>
 **Question:** <one-sentence research question>
 **Researched:** <YYYY-MM-DD>
-**Depth:** quick | standard | literature-review
+**Depth:** quick | standard | literature-review | extreme
 **Study link:** <studies/<slug>/ or none>
 **Full source index:** <research/<slug>/sources-index.md>
 
