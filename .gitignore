@@ -1,0 +1,3 @@
+# Personal study artifacts — local usage only, not published to GitHub
+studies/*/
+!studies/.gitkeep
