@@ -19,7 +19,6 @@ Works in **Claude Code** and **Grok Build** (Grok reads `~/.claude/skills/` auto
 
 ```
 /bear-hours      → frame the topic      → studies/<slug>/brief.md
-/study-session   → read one source      → studies/<slug>/notes.md
 ```
 
 Cross-project memory lives in `~/.ours-stack/studies-index.jsonl`. `./setup` backfills existing `studies/` into the index.
@@ -28,7 +27,6 @@ Example:
 
 ```
 /bear-hours I want to understand how gstack structures its skills
-/study-session https://arxiv.org/abs/1906.04811
 ```
 
 Details: [AGENTS.md](AGENTS.md)

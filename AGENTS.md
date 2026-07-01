@@ -17,8 +17,7 @@ Every study uses the same layout:
 
 ```
 studies/<slug>/
-├── brief.md        # /bear-hours
-└── notes.md        # /study-session
+└── brief.md        # /bear-hours
 ```
 
 ### Cross-session memory
@@ -42,14 +41,12 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 | Skill | When to use |
 |-------|-------------|
 | `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 7 framing questions (incl. source material), confirm slug before reuse |
-| `/study-session` | `brief.md` exists, ready to read a source — dense notes against the wedge → `notes.md` |
 
 ## Routing
 
 - User shares a learning goal without a plan → `/bear-hours`
 - User shares paper/chapter/URL without a brief → `/bear-hours` first
-- User has a brief and a source to read → `/study-session`
-- User has notes and wants to publish → future `/proof-draft`
+- User has a brief and wants to publish → future `/proof-draft`
 
 ## Privacy
 

@@ -236,7 +236,7 @@ After writing `brief.md`, register the study in the global index:
 
 Tell the user:
 - Slug and path to `brief.md`
-- Next step: `/study-session` with a source from the brief (paste a URL or pick from `## Source material`) — stay inside the wedge
+- Next step: read a source from `## Source material` in chat (paste URL + wedge), or draft public proof (future `/proof-draft`)
 - Remind: deep over wide — resist scope creep beyond the wedge
 
 ## Rules
