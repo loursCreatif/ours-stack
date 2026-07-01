@@ -1,8 +1,9 @@
 ---
 name: bear-hours
 description: |
-  School of the Bear topic framing — six forcing questions before deep learning.
-  Defines scope, wedge, success criteria, and public proof commitment.
+  School of the Bear topic framing — seven forcing questions before deep learning.
+  Defines scope, wedge, success criteria, source material, and public proof commitment.
+  Asks consent before optional local scan; never reads source material during framing.
   Use when the user starts a new study, asks what to learn, wants to frame a topic,
   or says "bear hours", "cadrer mon apprentissage", "what should I study".
   Outputs studies/<slug>/brief.md. Run before /dense-read on new topics.
@@ -28,7 +29,7 @@ Use the **`AskUserQuestion`** tool for every framing question (Claude Code nativ
 - **One question per call** — a single entry in `questions[]`, never batch Q1+Q2
 - **STOP** after each call; wait for the answer before the next question
 - **Smart-skip** — if the user's initial message already answers a question, skip it
-- **Title format:** `Bear Hours — Q{n}/6 : {label}`
+- **Title format:** `Bear Hours — Q{n}/7 : {label}`
 
 **Open vs fixed questions:**
 - **Open** (Q1–Q4): infer 2–3 contextual options from what the user said, plus a final option `other` — "Other — I'll clarify in my next message". If they pick `other`, accept a short free-text reply in chat, then continue with the next `AskUserQuestion`.
@@ -42,7 +43,7 @@ Before Q1, ask permission to search the user's machine for prior learning contex
 
 **Title:** `Bear Hours — Local scan`
 
-**Ask:** "Je peux fouiller sur ta machine pour voir où tu en es sur ce sujet (études passées, checkpoints, learnings). OK ?"
+**Ask:** "Je peux chercher dans tes anciens dossiers d'étude et learnings locaux liés à ce sujet. OK ?"
 
 **Options:**
 - Yes — search locally
@@ -59,7 +60,7 @@ If **Yes** → one more `AskUserQuestion`:
 **Options:**
 - **A)** This repo only — `studies/` in the current project
 - **B)** Repo + global learnings — `studies/` + `~/.ours-stack/learnings.jsonl` *(recommended)*
-- **C)** Everywhere on this machine — other `studies/` folders too (slower, cross-project)
+- **C)** Cross-project — other `studies/` folders on this machine *(excludes Mail, Downloads, dotfolders; slower)*
 
 ### Run the scan
 
@@ -69,7 +70,9 @@ Extract 2–4 keywords from the user's topic. Then:
 |-------|---------|
 | **A** | `Glob` `studies/*/brief.md` · `Grep` keywords in `studies/` · read matching `checkpoint.md` if any |
 | **B** | Everything in **A** · `Read` `~/.ours-stack/learnings.jsonl` (or `tail` last 30 lines) · keep entries matching slug or keywords |
-| **C** | Everything in **B** · bounded find for other study trees: `find "$HOME" -maxdepth 8 -path "*/studies/*/brief.md" ! -path "*/node_modules/*" ! -path "*/.git/*" 2>/dev/null \| head -25` · `Grep` keywords in hits · read top 2–3 matches only |
+| **C** | Everything in **B** · bounded find for other study trees only (paths must contain `studies/`): `find "$HOME" -maxdepth 8 -path "*/studies/*/brief.md" ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.claude/*" ! -path "*/.agents/*" ! -path "*/Library/*" ! -path "*/Mail/*" ! -path "*/Downloads/*" ! -path "*/.ssh/*" ! -path "*/.gnupg/*" 2>/dev/null \| head -25` · `Grep` keywords in hits · read top 2–3 matches only |
+
+**Scope C hard limits:** only paths containing `studies/` — never read Mail, Downloads, credentials, or agent skill folders (`.claude`, `.agents`).
 
 **Limits:** max 3 study folders opened · max 5 learnings surfaced · framing scan only — do not summarize source material.
 
@@ -80,15 +83,16 @@ If anything relevant, show 2–4 bullets in chat. When a past learning applies:
 > **Prior learning applied:** [insight] (confidence: high|medium|low, [date])
 
 **Use findings to:**
-- Propose **resuming** an existing slug (same scope) instead of creating a duplicate
+- **Suggest** resuming an existing slug in Step 2 — never auto-resume without user confirmation
 - Pre-fill or smart-skip **Q3** (current beliefs) when checkpoints already state them
+- Smart-skip **Q7** (source material) when the user already shared a URL, paper, chapter, or file path
 - Add `## Prior progress` in the brief (Step 3) when scan found context
 
 If nothing found: one line — "No prior local context — starting fresh."
 
 ## Step 1: Gather context
 
-Ask via `AskUserQuestion` until all six are answered (or smart-skipped).
+Ask via `AskUserQuestion` until all seven are answered (or smart-skipped).
 
 ### Q1 — Topic
 
@@ -135,28 +139,54 @@ Ask via `AskUserQuestion` until all six are answered (or smart-skipped).
 - Ongoing (no hard deadline)
 - `other`
 
+### Q7 — Source material
+
+**Ask:** "Do you already have source material for `/dense-read`? A URL, paper, chapter, repo, or file path."
+
+**Options:**
+- Yes — I have a specific source
+- Not yet — I'll find it during `/dense-read`
+- `other`
+
+If **Yes** or `other` with a source → accept URL/title/path in chat (one short reply), record verbatim in `## Source material`. If **Not yet** → write `TBD — to be chosen at /dense-read` in the brief and add a line under `## Open questions`.
+
+**Smart-skip:** if the user's opening message already includes a URL, arXiv link, paper title, chapter, repo, or file path, skip Q7 and use that source directly.
+
 ### Confirm before writing
 
-After Q6, call `AskUserQuestion` once more:
+After Q7 (or Q6 if Q7 smart-skipped), call `AskUserQuestion` once more:
 
 **Title:** `Bear Hours — Confirm brief`
 
-**Ask:** Summarize topic, wedge, proof plan, and time box in 3–4 bullets. "Ready to write `studies/<slug>/brief.md`?"
+**Ask:** Summarize topic, wedge, proof plan, time box, and source material (or "TBD") in 3–5 bullets. "Ready to write `studies/<slug>/brief.md`?"
 
 **Options:**
 - Yes — write the brief
 - Adjust the wedge
 - Adjust the public proof plan
+- Adjust source material
 
 If they pick an adjustment option, ask one targeted `AskUserQuestion`, then confirm again.
 
 ## Step 2: Choose slug
 
-Derive `slug` from the topic: lowercase, hyphens, no spaces.
+Derive `slug` from the topic: lowercase, hyphens, no spaces (per AGENTS.md).
 
-- Check `studies/` for collisions
-- If slug exists with same scope → resume that study
-- If scope diverged → new slug with suffix (`topic-v2`)
+1. `Glob` `studies/<slug>/brief.md` (or list `studies/` and match).
+2. **If slug does not exist** → use it.
+3. **If slug exists** → read existing `brief.md` (`#` title, `## Narrow wedge`, `Created`). Call `AskUserQuestion`:
+
+**Title:** `Bear Hours — Existing study`
+
+**Ask:** "A study `studies/<slug>/` already exists: **[title]** — wedge: *[one-liner]*. What do you want to do?"
+
+**Options:**
+- Resume this study — update brief in place
+- Same topic, new scope — fork as `<slug>-v2`
+- Different topic — use a new slug (agent proposes 2 alternatives in chat)
+
+4. **Never** overwrite or resume without explicit user choice (AGENTS.md: ask before reusing an existing slug).
+5. **Suffix chain:** if `<slug>-v2` exists, try `-v3`, then `-v4`, until a free slug is found.
 
 ## Step 3: Write brief.md
 
@@ -200,11 +230,15 @@ Create `studies/<slug>/brief.md` with this structure:
 
 Tell the user:
 - Slug and path to `brief.md`
-- Recommended next step: `/dense-read` with the source material
+- Next step:
+  - If source material is known → suggest exact command: `/dense-read <url-or-path>`
+  - If source is TBD → `/dense-read` once they pick a paper/chapter/URL
 - Remind: deep over wide — resist scope creep beyond the wedge
 
 ## Rules
 
 - Do not start reading or summarizing source material here — framing only
+- Do not open or inspect source documents even if the user supplies URLs or file paths — record them in the brief only
 - Push back on "learn everything about X" — force a wedge
 - Every study must have a public proof plan, even if small (one tweet thread counts)
+- Scope C local scan: `studies/` paths only — never broaden to personal or credential folders
