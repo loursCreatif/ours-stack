@@ -1,95 +1,19 @@
 #!/usr/bin/env bash
-# ours-stack setup — opt-in skill install per agent host
+# ours-stack setup — link skills + create state dir
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR="${OURS_STACK_HOME:-$HOME/.ours-stack}"
-INSTALL_GROK=0
-INSTALL_CURSOR=0
-INSTALL_CLAUDE=0
-
-usage() {
-  cat <<EOF
-ours-stack setup
-
-Usage: ./setup [options]
-
-Options:
-  --grok      Symlink skills to ~/.grok/skills/<skill>/
-  --cursor    Symlink skills to ~/.cursor/skills/<skill>/
-  --claude    Symlink repo to ~/.claude/skills/ours-stack
-  --all       Enable all hosts
-  -h, --help  Show this help
-
-With no host flags, only creates state directory and learnings.jsonl.
-EOF
-}
-
-link_skill() {
-  local target_root="$1"
-  local skill="$2"
-  local link_path="$target_root/$skill"
-  local skill_dir="$REPO_ROOT/$skill"
-
-  [ -d "$skill_dir" ] || { echo "Missing skill dir: $skill_dir" >&2; return 1; }
-  mkdir -p "$target_root"
-  ln -sfn "$skill_dir" "$link_path"
-  echo "  linked $link_path -> $skill_dir"
-}
-
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --grok) INSTALL_GROK=1; shift ;;
-    --cursor) INSTALL_CURSOR=1; shift ;;
-    --claude) INSTALL_CLAUDE=1; shift ;;
-    --all) INSTALL_GROK=1; INSTALL_CURSOR=1; INSTALL_CLAUDE=1; shift ;;
-    -h|--help) usage; exit 0 ;;
-    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
-  esac
-done
-
-echo "ours-stack setup"
-echo "  repo:  $REPO_ROOT"
-echo "  state: $STATE_DIR"
 
 mkdir -p "$STATE_DIR"
 touch "$STATE_DIR/learnings.jsonl"
-echo "  created $STATE_DIR/learnings.jsonl"
 
-SKILLS=(bear-hours dense-read checkpoint-learnings)
+mkdir -p "$HOME/.claude/skills"
+ln -sfn "$REPO_ROOT" "$HOME/.claude/skills/ours-stack"
 
-if [ "$INSTALL_GROK" -eq 1 ]; then
-  echo "Grok:"
-  for s in "${SKILLS[@]}"; do
-    link_skill "$HOME/.grok/skills" "$s"
-  done
-fi
-
-if [ "$INSTALL_CURSOR" -eq 1 ]; then
-  echo "Cursor:"
-  for s in "${SKILLS[@]}"; do
-    link_skill "$HOME/.cursor/skills" "$s"
-  done
-fi
-
-if [ "$INSTALL_CLAUDE" -eq 1 ]; then
-  echo "Claude Code:"
-  mkdir -p "$HOME/.claude/skills"
-  ln -sfn "$REPO_ROOT" "$HOME/.claude/skills/ours-stack"
-  echo "  linked $HOME/.claude/skills/ours-stack -> $REPO_ROOT"
-fi
-
-if [ "$INSTALL_GROK" -eq 0 ] && [ "$INSTALL_CURSOR" -eq 0 ] && [ "$INSTALL_CLAUDE" -eq 0 ]; then
-  echo ""
-  echo "No host flags passed. State ready. Install skills with:"
-  echo "  ./setup --grok"
-  echo "  ./setup --cursor"
-  echo "  ./setup --claude"
-  echo "  ./setup --all"
-fi
-
+echo "ours-stack ready"
+echo "  skills -> ~/.claude/skills/ours-stack"
+echo "  state  -> $STATE_DIR/learnings.jsonl"
 echo ""
-echo "Routing: add AGENTS.md rules to your agent config, or invoke:"
-echo "  /bear-hours  /dense-read  /checkpoint-learnings"
-echo ""
-echo "Done."
+echo "Use: /bear-hours  /dense-read  /checkpoint-learnings"
+echo "Grok Build sees these via Claude compat (no extra install)."

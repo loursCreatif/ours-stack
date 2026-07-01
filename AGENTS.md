@@ -1,8 +1,8 @@
-# ours-stack — Learning Workflow
+# ours-stack
 
-Opinionated agent skills for AI-native autodidacts. Deep learning, dense papers, public proof.
+Install: `git clone … ~/.claude/skills/ours-stack && ./setup`
 
-By **School of the Bear**.
+Skills live in subfolders (`bear-hours/`, etc.). Grok Build discovers them via Claude compat.
 
 ## Ethos
 
