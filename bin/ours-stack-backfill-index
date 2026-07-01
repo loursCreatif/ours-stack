@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# One-time bounded scan: register all studies/*/brief.md into the global index.
+# Run from setup — not used by agents at runtime.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REGISTER="$SCRIPT_DIR/ours-stack-register-study"
+COUNT=0
+
+while IFS= read -r brief; do
+  [ -z "$brief" ] && continue
+  "$REGISTER" "$brief" >/dev/null
+  COUNT=$((COUNT + 1))
+done < <(
+  find "$HOME" -maxdepth 8 -path "*/studies/*/brief.md" \
+    ! -path "*/node_modules/*" ! -path "*/.git/*" \
+    ! -path "*/.claude/*" ! -path "*/.agents/*" \
+    ! -path "*/Library/*" ! -path "*/Mail/*" ! -path "*/Downloads/*" \
+    ! -path "*/.ssh/*" ! -path "*/.gnupg/*" \
+    2>/dev/null
+)
+
+echo "backfill: $COUNT studies indexed"

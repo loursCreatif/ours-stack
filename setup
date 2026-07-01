@@ -3,17 +3,24 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-STATE_DIR="${OURS_STACK_HOME:-$HOME/.ours-stack}"
-
-mkdir -p "$STATE_DIR"
-touch "$STATE_DIR/learnings.jsonl"
 
 mkdir -p "$HOME/.claude/skills"
 ln -sfn "$REPO_ROOT" "$HOME/.claude/skills/ours-stack"
 
+OURS_STACK_HOME="${OURS_STACK_HOME:-$HOME/.ours-stack}"
+mkdir -p "$OURS_STACK_HOME"
+touch "$OURS_STACK_HOME/learnings.jsonl"
+touch "$OURS_STACK_HOME/studies-index.jsonl"
+
+if command -v jq >/dev/null 2>&1; then
+  "$REPO_ROOT/bin/ours-stack-backfill-index" 2>/dev/null || true
+else
+  echo "  note: install jq for study index backfill (brew install jq)"
+fi
+
 echo "ours-stack ready"
 echo "  skills -> ~/.claude/skills/ours-stack"
-echo "  state  -> $STATE_DIR/learnings.jsonl"
+echo "  state  -> $OURS_STACK_HOME"
 echo ""
-echo "Use: /bear-hours  /dense-read  /checkpoint-learnings"
+echo "Use: /bear-hours"
 echo "Grok Build sees these via Claude compat (no extra install)."

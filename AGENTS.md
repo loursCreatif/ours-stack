@@ -17,13 +17,18 @@ Every study uses the same layout:
 
 ```
 studies/<slug>/
-├── brief.md        # /bear-hours
-├── notes.md        # /dense-read
-├── proof.md        # /dense-read (final section)
-└── checkpoint.md   # /checkpoint-learnings
+└── brief.md        # /bear-hours
 ```
 
-Cross-session memory: `~/.ours-stack/learnings.jsonl`
+### Cross-session memory
+
+```
+~/.ours-stack/
+├── studies-index.jsonl   # registered studies (slug, path, title, wedge, repo)
+└── learnings.jsonl       # durable insights across sessions
+```
+
+Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill existing studies: `./setup` (or `bin/ours-stack-backfill-index`).
 
 ### Slug rules
 
@@ -35,25 +40,13 @@ Cross-session memory: `~/.ours-stack/learnings.jsonl`
 
 | Skill | When to use |
 |-------|-------------|
-| `/bear-hours` | New topic, "what should I learn?", scope unclear — optional bounded local scan, 7 framing questions (incl. source material), confirm slug before reuse |
-| `/dense-read` | Paper, chapter, dense doc, URL, PDF, or pasted text |
-| `/checkpoint-learnings` | End of session, pause, resume, "where was I?" |
+| `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 7 framing questions (incl. source material), confirm slug before reuse |
 
 ## Routing
 
 - User shares a learning goal without a plan → `/bear-hours`
-- User shares paper/chapter/URL/dense material → `/dense-read` (create `brief.md` first if missing)
-- User says pause, resume, checkpoint, "what did I retain?" → `/checkpoint-learnings`
-- User wants public proof only → `/dense-read` (focus on `proof.md` section)
+- User shares paper/chapter/URL/dense material without a brief → `/bear-hours` first, then read sources in normal chat against the wedge
 
 ## Privacy
 
-Before any public proof: strip copyrighted long quotes, personal data, unreleased work. Summarize in your own words. `proof.md` is a draft — user publishes manually.
-
-## Quick loop
-
-```
-/bear-hours → /dense-read → /checkpoint-learnings
-```
-
-Repeat until `proof.md` is ready to publish.
+Before any public proof: strip copyrighted long quotes, personal data, unreleased work. Summarize in your own words.

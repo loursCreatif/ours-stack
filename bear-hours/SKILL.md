@@ -6,7 +6,7 @@ description: |
   Asks consent before optional local scan; never reads source material during framing.
   Use when the user starts a new study, asks what to learn, wants to frame a topic,
   or says "bear hours", "cadrer mon apprentissage", "what should I study".
-  Outputs studies/<slug>/brief.md. Run before /dense-read on new topics.
+  Outputs studies/<slug>/brief.md.
 allowed-tools:
   - Read
   - Write
@@ -43,10 +43,10 @@ Before Q1, ask permission to search the user's machine for prior learning contex
 
 **Title:** `Bear Hours — Local scan`
 
-**Ask:** "Je peux chercher dans tes anciens dossiers d'étude et learnings locaux liés à ce sujet. OK ?"
+**Ask:** "Je peux chercher dans tes anciennes études enregistrées liées à ce sujet. OK ?"
 
 **Options:**
-- Yes — search locally
+- Yes — search registered studies
 - No — start fresh
 
 If **No** → skip to Step 1.
@@ -59,8 +59,7 @@ If **Yes** → one more `AskUserQuestion`:
 
 **Options:**
 - **A)** This repo only — `studies/` in the current project
-- **B)** Repo + global learnings — `studies/` + `~/.ours-stack/learnings.jsonl` *(recommended)*
-- **C)** Cross-project — other `studies/` folders on this machine *(excludes Mail, Downloads, dotfolders; slower)*
+- **B)** Repo + global index — `studies/` + `~/.ours-stack/studies-index.jsonl` + `~/.ours-stack/learnings.jsonl` *(recommended)*
 
 ### Run the scan
 
@@ -68,13 +67,12 @@ Extract 2–4 keywords from the user's topic. Then:
 
 | Scope | Actions |
 |-------|---------|
-| **A** | `Glob` `studies/*/brief.md` · `Grep` keywords in `studies/` · read matching `checkpoint.md` if any |
-| **B** | Everything in **A** · `Read` `~/.ours-stack/learnings.jsonl` (or `tail` last 30 lines) · keep entries matching slug or keywords |
-| **C** | Everything in **B** · bounded find for other study trees only (paths must contain `studies/`): `find "$HOME" -maxdepth 8 -path "*/studies/*/brief.md" ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/.claude/*" ! -path "*/.agents/*" ! -path "*/Library/*" ! -path "*/Mail/*" ! -path "*/Downloads/*" ! -path "*/.ssh/*" ! -path "*/.gnupg/*" 2>/dev/null \| head -25` · `Grep` keywords in hits · read top 2–3 matches only |
+| **A** | `Glob` `studies/*/brief.md` · `Grep` keywords in `studies/` · read matching `brief.md` / `notes.md` if relevant |
+| **B** | Everything in **A** · `Read` `~/.ours-stack/studies-index.jsonl` · keep entries matching slug or keywords (title, wedge, repo_name) · skip entries whose `study_path` is already covered by scope A · read top 2–3 external `brief_path` matches only · `Read` or `tail` `~/.ours-stack/learnings.jsonl` (last 30 lines) · keep entries matching keywords |
 
-**Scope C hard limits:** only paths containing `studies/` — never read Mail, Downloads, credentials, or agent skill folders (`.claude`, `.agents`).
+**Index-only rule:** cross-project discovery reads **only** `~/.ours-stack/` — never run `find` on `$HOME` at runtime. Studies from other repos appear only if registered in the index (via `./setup` backfill or `bin/ours-stack-register-study` after each brief).
 
-**Limits:** max 3 study folders opened · max 5 learnings surfaced · framing scan only — do not summarize source material.
+**Limits:** max 3 study folders opened · max 5 index/learnings entries surfaced · framing scan only — do not summarize source material.
 
 ### Report findings
 
@@ -84,7 +82,7 @@ If anything relevant, show 2–4 bullets in chat. When a past learning applies:
 
 **Use findings to:**
 - **Suggest** resuming an existing slug in Step 2 — never auto-resume without user confirmation
-- Pre-fill or smart-skip **Q3** (current beliefs) when checkpoints already state them
+- Pre-fill or smart-skip **Q3** (current beliefs) when prior briefs already state them
 - Smart-skip **Q7** (source material) when the user already shared a URL, paper, chapter, or file path
 - Add `## Prior progress` in the brief (Step 3) when scan found context
 
@@ -141,14 +139,14 @@ Ask via `AskUserQuestion` until all seven are answered (or smart-skipped).
 
 ### Q7 — Source material
 
-**Ask:** "Do you already have source material for `/dense-read`? A URL, paper, chapter, repo, or file path."
+**Ask:** "Do you already have source material? A URL, paper, chapter, repo, or file path."
 
 **Options:**
 - Yes — I have a specific source
-- Not yet — I'll find it during `/dense-read`
+- Not yet — I'll find it later
 - `other`
 
-If **Yes** or `other` with a source → accept URL/title/path in chat (one short reply), record verbatim in `## Source material`. If **Not yet** → write `TBD — to be chosen at /dense-read` in the brief and add a line under `## Open questions`.
+If **Yes** or `other` with a source → accept URL/title/path in chat (one short reply), record verbatim in `## Source material`. If **Not yet** → write `TBD` in the brief and add a line under `## Open questions`.
 
 **Smart-skip:** if the user's opening message already includes a URL, arXiv link, paper title, chapter, repo, or file path, skip Q7 and use that source directly.
 
@@ -206,7 +204,7 @@ Create `studies/<slug>/brief.md` with this structure:
 <status quo>
 
 ## Prior progress
-<only if Step 0 found context — related slug, checkpoint one-liner, 1–3 learnings; omit section if none>
+<only if Step 0 found context — related slug, brief one-liner, open questions from notes; omit section if none>
 
 ## Narrow wedge
 <smallest learnable unit — be concrete>
@@ -220,19 +218,25 @@ Create `studies/<slug>/brief.md` with this structure:
 <format + audience + draft hook>
 
 ## Source material
-<URLs, papers, chapters, repos — to be consumed in /dense-read>
+<URLs, papers, chapters, repos — to read against the wedge>
 
 ## Open questions
 - ...
 ```
 
+After writing `brief.md`, register the study in the global index:
+
+```bash
+~/.claude/skills/ours-stack/bin/ours-stack-register-study studies/<slug>/brief.md
+```
+
+(Use the repo-local path if developing outside the symlink.)
+
 ## Step 4: Confirm and route
 
 Tell the user:
 - Slug and path to `brief.md`
-- Next step:
-  - If source material is known → suggest exact command: `/dense-read <url-or-path>`
-  - If source is TBD → `/dense-read` once they pick a paper/chapter/URL
+- Next step: read sources listed in the brief (paste a URL or ask the agent to read one) — stay inside the wedge
 - Remind: deep over wide — resist scope creep beyond the wedge
 
 ## Rules
@@ -241,4 +245,4 @@ Tell the user:
 - Do not open or inspect source documents even if the user supplies URLs or file paths — record them in the brief only
 - Push back on "learn everything about X" — force a wedge
 - Every study must have a public proof plan, even if small (one tweet thread counts)
-- Scope C local scan: `studies/` paths only — never broaden to personal or credential folders
+- Cross-project scan: `~/.ours-stack/studies-index.jsonl` only — never `find $HOME` at runtime

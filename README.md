@@ -18,17 +18,15 @@ Works in **Claude Code** and **Grok Build** (Grok reads `~/.claude/skills/` auto
 ## Use
 
 ```
-/bear-hours          → frame the topic      → studies/<slug>/brief.md
-/dense-read          → read deeply          → notes.md + proof.md
-/checkpoint-learnings → save & remember     → checkpoint.md + ~/.ours-stack/learnings.jsonl
+/bear-hours   → frame the topic   → studies/<slug>/brief.md
 ```
+
+Cross-project memory lives in `~/.ours-stack/studies-index.jsonl`. `./setup` backfills existing `studies/` into the index.
 
 Example:
 
 ```
 /bear-hours I want to understand how gstack structures its skills
-/dense-read https://github.com/garrytan/gstack
-/checkpoint-learnings
 ```
 
 Details: [AGENTS.md](AGENTS.md)
