@@ -3,3 +3,10 @@ studies/*/
 !studies/.gitkeep
 research/*/
 !research/.gitkeep
+output/
+memory-palace/references/vendor/
+.gstack/
+.context/
+.grok/
+__pycache__/
+*.pyc

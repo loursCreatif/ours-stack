@@ -4,8 +4,26 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-mkdir -p "$HOME/.claude/skills"
+mkdir -p "$HOME/.claude/skills" "$HOME/.grok/skills"
 ln -sfn "$REPO_ROOT" "$HOME/.claude/skills/ours-stack"
+
+# Remove orphaned Grok skill symlinks pointing into this repo (stale skill renames).
+for link in "$HOME/.grok/skills"/*; do
+  [ -L "$link" ] || continue
+  target="$(readlink "$link")"
+  case "$target" in
+    "$REPO_ROOT"/*)
+      [ -e "$target" ] || rm -f "$link"
+      ;;
+  esac
+done
+
+# Grok Build discovers ~/.grok/skills/<name>/SKILL.md — not nested ours-stack paths.
+for skill_dir in "$REPO_ROOT"/*/SKILL.md; do
+  [ -f "$skill_dir" ] || continue
+  skill_name="$(basename "$(dirname "$skill_dir")")"
+  ln -sfn "$(dirname "$skill_dir")" "$HOME/.grok/skills/$skill_name"
+done
 
 OURS_STACK_HOME="${OURS_STACK_HOME:-$HOME/.ours-stack}"
 mkdir -p "$OURS_STACK_HOME"
@@ -19,8 +37,10 @@ else
 fi
 
 echo "ours-stack ready"
-echo "  skills -> ~/.claude/skills/ours-stack"
+echo "  claude -> ~/.claude/skills/ours-stack"
+echo "  grok   -> ~/.grok/skills/{bear-hours,source-scout,...}"
 echo "  state  -> $OURS_STACK_HOME"
 echo ""
-echo "Use: /bear-hours  /source-scout  /deep-research"
-echo "Grok Build sees these via Claude compat (no extra install)."
+echo "Use: /bear-hours  /source-scout  /dense-read  /deep-research  /layout-html  /mind-map  /memory-palace  /infographic  /council  /dialogue  /study-status"
+echo "Open this repo as workspace for studies/ (or any repo with studies/<slug>/)."
+"$REPO_ROOT/bin/ours-stack-doctor" 2>/dev/null || true
