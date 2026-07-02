@@ -18,7 +18,7 @@ Every study uses the same layout:
 ```
 studies/<slug>/
 ├── brief.md        # /bear-hours
-├── notes.md        # /dense-read (anchor extraction)
+├── notes.md        # /dense-read (session trace — guided tranches + tes réponses)
 ├── council.md      # /council (optional)
 ├── dialogue/       # /dialogue (optional)
 │   └── <persona>/
@@ -97,7 +97,7 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 |-------|-------------|
 | `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 5 framing questions (entry angle → wedge); `## Source material` defaults to TBD — run /source-scout, confirm slug before reuse |
 | `/source-scout` | Brief exists, `## Source material` is TBD or thin — wedge-locked search; exactly 3 sources (article + YouTube + joker), anchor + core in brief; URLs opened in browser |
-| `/dense-read` | Anchor source + brief exist — wedge-locked Feynman extraction from one source → `notes.md`; traceable claims, surprises vs beliefs; stops when wedge covered |
+| `/dense-read` | Anchor + brief — lecture guidée tranche par tranche (3–6), une question par tranche, `notes.md` = trace avec tes réponses ; « lis tout seul » = mode extraction solo ; handoff → `/mind-map` |
 | `/deep-research` | Standalone — classic funnel: 150–250+ sources discovered & screened (default), 15–25 read in depth, synthesis report + `sources-index.md`. No brief required |
 | `/layout-html` | Finished text → self-contained HTML (editorial typography, 3–7 inline SVG figures quoted from source) — `report.md`, notes, any `.md`/`.txt`, pasted text; opens offline; fidelity over beauty; no new research |
 | `/mind-map` | Interactive mind map from brief/notes/report — `mind-map.json` (editable) + `mind-map.html` (pan/zoom, expand/collapse, source links); no new research |
