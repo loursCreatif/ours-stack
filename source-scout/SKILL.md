@@ -258,13 +258,22 @@ xdg-open "<url1>"
 
 One command per URL. Extract URLs from the 3 written sources (anchor + 2 core).
 
-Tell the user:
-- Path to updated brief
-- **Les 3 sources sont ouvertes dans ton navigateur** (if Step 5 was not cancelled)
-- Video fallback line if slot 2 was not YouTube
-- **Read the anchor first** — name it
-- Next step: `/dense-read <slug>` on the anchor, or paste anchor URL + wedge into chat
-- Reminder: scout found sources; it did not read them
+5. **Handoff — passation et enchaînement** (skip if Step 5 cancelled). Three beats — tone like `bear-hours` Step 4; personalized, direct, no ceremony.
+
+**Anti-slop:** quote the `## Narrow wedge` unit; no « Félicitations ! », no filler. GOOD: « Sur [wedge], 3 sources sont dans le brief — commence par [anchor]. » BAD: template sentence alone. One line: scout found sources; it did not read them.
+
+**Beat 1 — Ce qui vient d'être fait:** One short paragraph — 3 sources for **« <wedge unit> »** in `studies/<slug>/brief.md`; if browser opened → **les 3 sources sont ouvertes dans ton navigateur**; name the anchor (read first); video fallback line if slot 2 is not YouTube.
+
+**Beat 2 — Carte du parcours:**
+
+```
+✅ /bear-hours — cadrage (fait)
+✅ /source-scout — 3 sources trouvées (fait)
+→ /dense-read — lecture guidée de l'anchor, tranche par tranche
+  /study-status — à tout moment, pour voir où tu en es
+```
+
+**Beat 3 — Enchaînement:** `AskUserQuestion` — title `Source Scout — On enchaîne ?`, ask « On enchaîne sur /dense-read pour l'anchor de <slug> ? » Options: **Oui — lance /dense-read sur l'anchor maintenant** | **Plus tard — je m'arrête ici**. If Oui → **Read** and follow `dense-read/SKILL.md` for this `<slug>` and anchor in the **same session**; do not stop after handoff. If Plus tard → one line: `Quand tu veux : /dense-read <slug>`.
 
 ## Escape hatches
 
@@ -285,3 +294,4 @@ Tell the user:
 - [ ] ≥1 skipped source documented (proves wedge discipline)
 - [ ] No source already `[x]` in this or related studies
 - [ ] User knows which single source to open first
+- [ ] Handoff delivered (3 beats + enchaînement) unless Step 5 cancelled
