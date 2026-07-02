@@ -12,7 +12,25 @@ fi
 BRIEF="$(cd "$(dirname "$BRIEF")" && pwd)/$(basename "$BRIEF")"
 OURS_STACK_HOME="${OURS_STACK_HOME:-$HOME/.ours-stack}"
 INDEX="$OURS_STACK_HOME/studies-index.jsonl"
+LOCK="$OURS_STACK_HOME/studies-index.lock"
 mkdir -p "$OURS_STACK_HOME"
+
+release_lock() {
+  rmdir "$LOCK" 2>/dev/null || true
+}
+trap release_lock EXIT INT TERM
+
+acquire_lock() {
+  local attempt=0
+  while ! mkdir "$LOCK" 2>/dev/null; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -ge 10 ]; then
+      echo "error: could not acquire index lock after 10 retries" >&2
+      exit 1
+    fi
+    sleep 0.2
+  done
+}
 
 STUDY_DIR="$(dirname "$BRIEF")"
 SLUG="$(basename "$STUDY_DIR")"
@@ -32,34 +50,83 @@ REPO_NAME="$(basename "$REPO_ROOT")"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 UPDATED="$(date -u +%Y-%m-%d)"
 
-if ! command -v jq >/dev/null 2>&1; then
-  echo "error: jq required for ours-stack-register-study" >&2
-  exit 1
-fi
+build_entry() {
+  if command -v jq >/dev/null 2>&1; then
+    jq -nc \
+      --arg ts "$TS" \
+      --arg slug "$SLUG" \
+      --arg study_path "$STUDY_DIR" \
+      --arg brief_path "$BRIEF" \
+      --arg title "$TITLE" \
+      --arg wedge "$WEDGE" \
+      --arg repo_name "$REPO_NAME" \
+      --arg repo_root "$REPO_ROOT" \
+      --arg updated "$UPDATED" \
+      '{ts:$ts,slug:$slug,study_path:$study_path,brief_path:$brief_path,title:$title,wedge:$wedge,repo_name:$repo_name,repo_root:$repo_root,updated:$updated}'
+  else
+    python3 -c 'import json, sys
+print(json.dumps({
+    "ts": sys.argv[1],
+    "slug": sys.argv[2],
+    "study_path": sys.argv[3],
+    "brief_path": sys.argv[4],
+    "title": sys.argv[5],
+    "wedge": sys.argv[6],
+    "repo_name": sys.argv[7],
+    "repo_root": sys.argv[8],
+    "updated": sys.argv[9],
+}, ensure_ascii=False))' \
+      "$TS" "$SLUG" "$STUDY_DIR" "$BRIEF" "$TITLE" "$WEDGE" "$REPO_NAME" "$REPO_ROOT" "$UPDATED"
+  fi
+}
 
-ENTRY="$(jq -nc \
-  --arg ts "$TS" \
-  --arg slug "$SLUG" \
-  --arg study_path "$STUDY_DIR" \
-  --arg brief_path "$BRIEF" \
-  --arg title "$TITLE" \
-  --arg wedge "$WEDGE" \
-  --arg repo_name "$REPO_NAME" \
-  --arg repo_root "$REPO_ROOT" \
-  --arg updated "$UPDATED" \
-  '{ts:$ts,slug:$slug,study_path:$study_path,brief_path:$brief_path,title:$title,wedge:$wedge,repo_name:$repo_name,repo_root:$repo_root,updated:$updated}')"
+merge_index() {
+  local entry="$1"
+  local tmp="$2"
 
+  if command -v jq >/dev/null 2>&1; then
+    if [ -s "$INDEX" ]; then
+      while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] && continue
+        sp="$(echo "$line" | jq -r '.study_path // empty' 2>/dev/null || true)"
+        [ "$sp" = "$STUDY_DIR" ] && continue
+        echo "$line"
+      done < "$INDEX" > "$tmp"
+    else
+      : > "$tmp"
+    fi
+    echo "$entry" >> "$tmp"
+  else
+    python3 -c 'import json, os, sys
+study_dir, entry_json, index_path, tmp_path = sys.argv[1:5]
+entry = json.loads(entry_json)
+lines = []
+if os.path.isfile(index_path) and os.path.getsize(index_path) > 0:
+    with open(index_path, encoding="utf-8") as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                obj = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if obj.get("study_path") == study_dir:
+                continue
+            lines.append(raw)
+lines.append(json.dumps(entry, ensure_ascii=False))
+with open(tmp_path, "w", encoding="utf-8") as out:
+    for line in lines:
+        out.write(line + "\n")' \
+      "$STUDY_DIR" "$entry" "$INDEX" "$tmp"
+  fi
+}
+
+acquire_lock
+ENTRY="$(build_entry)"
 TMP="$(mktemp)"
-if [ -s "$INDEX" ]; then
-  while IFS= read -r line || [ -n "$line" ]; do
-    [ -z "$line" ] && continue
-    sp="$(echo "$line" | jq -r '.study_path // empty' 2>/dev/null || true)"
-    [ "$sp" = "$STUDY_DIR" ] && continue
-    echo "$line"
-  done < "$INDEX" > "$TMP"
-else
-  : > "$TMP"
-fi
-echo "$ENTRY" >> "$TMP"
+merge_index "$ENTRY" "$TMP"
 mv "$TMP" "$INDEX"
+release_lock
+trap - EXIT INT TERM
 echo "registered: $SLUG ($STUDY_DIR)"

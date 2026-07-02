@@ -1,9 +1,10 @@
 ---
 name: bear-hours
 description: |
-  School of the Bear topic framing — seven forcing questions before deep learning.
-  Defines scope, wedge, success criteria, source material, and public proof commitment.
-  Asks consent before optional local scan; never reads source material during framing.
+  School of the Bear topic framing — five forcing questions before deep learning.
+  Defines scope, wedge (via entry angle), and success criteria; source material defaults
+  to TBD (or inserted from the opening message). Asks consent before optional local scan;
+  never reads source material during framing.
   Use when the user starts a new study, asks what to learn, wants to frame a topic,
   or says "bear hours", "cadrer mon apprentissage", "what should I study".
   Outputs studies/<slug>/brief.md.
@@ -14,6 +15,7 @@ allowed-tools:
   - Grep
   - AskUserQuestion
   - Bash
+  - WebSearch
 ---
 
 # Bear Hours
@@ -29,11 +31,11 @@ Use the **`AskUserQuestion`** tool for every framing question (Claude Code nativ
 - **One question per call** — a single entry in `questions[]`, never batch Q1+Q2
 - **STOP** after each call; wait for the answer before the next question
 - **Smart-skip** — if the user's initial message already answers a question, skip it
-- **Title format:** `Bear Hours — Q{n}/7 : {label}`
+- **Title format:** `Bear Hours — Q{n}/5 : {label}`
 
 **Open vs fixed questions:**
 - **Open** (Q1–Q4): infer 2–3 contextual options from what the user said, plus a final option `other` — "Other — I'll clarify in my next message". If they pick `other`, accept a short free-text reply in chat, then continue with the next `AskUserQuestion`.
-- **Fixed** (Q5–Q6): use the explicit options listed below.
+- **Fixed** (Q5): use the explicit options listed below (time box).
 
 **Escape hatch:** If the user says "skip", "just do it", or "vas-y" — ask at most 2 remaining questions via `AskUserQuestion`, then write the brief and list gaps under `Open questions`.
 
@@ -83,14 +85,14 @@ If anything relevant, show 2–4 bullets in chat. When a past learning applies:
 **Use findings to:**
 - **Suggest** resuming an existing slug in Step 2 — never auto-resume without user confirmation
 - Pre-fill or smart-skip **Q3** (current beliefs) when prior briefs already state them
-- Smart-skip **Q7** (source material) when the user already shared a URL, paper, chapter, or file path
+- **Opening-message source:** if the user already shared a URL, arXiv link, paper title, chapter, repo, or file path in their opening message, record it for direct insertion into `## Source material` in Step 3 (no question asked)
 - Add `## Prior progress` in the brief (Step 3) when scan found context
 
 If nothing found: one line — "No prior local context — starting fresh."
 
 ## Step 1: Gather context
 
-Ask via `AskUserQuestion` until all seven are answered (or smart-skipped).
+Ask via `AskUserQuestion` until all five are answered (or smart-skipped).
 
 ### Q1 — Topic
 
@@ -110,24 +112,33 @@ Ask via `AskUserQuestion` until all seven are answered (or smart-skipped).
 
 **Options:** Infer 2–3 beliefs they might hold + `other`.
 
-### Q4 — Narrow wedge
+### Q4 — Entry angle (derives the wedge)
 
-**Ask:** "What's the smallest slice that counts as 'learned'? Not the whole topic — one explainable unit."
+**Ask:** "Par où tu veux commencer ?"
 
-**Options:** Propose 2–3 plausible wedges derived from Q1 + `other`. Push back if the wedge is too wide.
+**Options:** Three angles **instanciés sur le sujet de Q1** (une ligne concrète chacun) + `other` — "Other — I'll clarify in my next message".
 
-### Q5 — Proof commitment
+**Avant d'afficher les options :** si tu n'es pas sûr de nommer une entrée narrative réelle pour l'angle « histoire », fais une **WebSearch rapide** (1–2 requêtes ciblées sur le sujet de Q1) pour identifier personnage, événement ou anecdote documentée — puis instancie les trois libellés.
 
-**Ask:** "What public artifact will prove you understood? Even small counts."
+**Règle « Par une histoire » :** jamais de libellé générique (`Par une histoire`, `une anecdote qui incarne le sujet`, etc.). L'option doit **nommer** une entrée narrative réelle et précise liée au sujet — personnage historique, événement, anecdote documentée — dans le libellé même : `Par une histoire — <nom précis>`.
 
-**Options:**
-- Thread X (3–5 posts)
-- GitHub gist or short write-up
-- LinkedIn / blog post
-- Small demo or screen recording
-- `other`
+Modèle (niveau de précision attendu) — sujet **« Bitcoin »** :
 
-### Q6 — Time box
+- **Les bases fondamentales** — comprendre la blockchain, les clés et le minage, brique par brique
+- **Par une histoire — Satoshi Nakamoto et le bloc genesis** *(jamais « Par une histoire » seul ni « une anecdote qui incarne le sujet »)*
+- **Vision d'ensemble d'abord** — la carte globale du protocole, une verticale à creuser viendra plus tard
+
+Modèle — sujet **« électricité »** :
+
+- **Les bases fondamentales** — tension, courant et résistance, loi d'Ohm en premier
+- **Par une histoire — la guerre des courants, Edison vs Tesla**
+- **Vision d'ensemble d'abord** — du générateur au réseau, une verticale viendra plus tard
+
+Adapter chaque libellé au sujet exact de Q1 — pas de formulation générique. Les deux autres angles (bases, vision d'ensemble) restent instanciés comme ci-dessus ; seul l'angle histoire exige le nom nominatif dans le libellé.
+
+**After the choice:** dériver le **wedge concret** (sujet + angle) et le confirmer en **une phrase** dans le chat (ou une micro `AskUserQuestion` si le wedge reste trop large). Repousser si le wedge couvre tout le champ de Q1. L'angle choisi sera noté dans `## Narrow wedge` du brief.
+
+### Q5 — Time box
 
 **Ask:** "How long are you giving yourself?"
 
@@ -137,34 +148,20 @@ Ask via `AskUserQuestion` until all seven are answered (or smart-skipped).
 - Ongoing (no hard deadline)
 - `other`
 
-### Q7 — Source material
-
-**Ask:** "Do you already have source material? A URL, paper, chapter, repo, or file path."
-
-**Options:**
-- Yes — I have a specific source
-- Not yet — I'll find it later
-- `other`
-
-If **Yes** or `other` with a source → accept URL/title/path in chat (one short reply), record verbatim in `## Source material`. If **Not yet** → write `TBD` in the brief and add a line under `## Open questions`.
-
-**Smart-skip:** if the user's opening message already includes a URL, arXiv link, paper title, chapter, repo, or file path, skip Q7 and use that source directly.
-
 ### Confirm before writing
 
-After Q7 (or Q6 if Q7 smart-skipped), call `AskUserQuestion` once more:
+After Q5, call `AskUserQuestion` once more:
 
 **Title:** `Bear Hours — Confirm brief`
 
-**Ask:** Summarize topic, wedge, proof plan, time box, and source material (or "TBD") in 3–5 bullets. "Ready to write `studies/<slug>/brief.md`?"
+**Ask:** Summarize topic, wedge (sujet + angle d'entrée), time box, and source material status (verbatim source if captured from the opening message, else `TBD — /source-scout`) in 3–5 bullets. Include: **« Tu as déjà un lien ? Colle-le maintenant, sinon /source-scout s'en chargera. »** Then: "Ready to write `studies/<slug>/brief.md`?"
 
 **Options:**
 - Yes — write the brief
 - Adjust the wedge
-- Adjust the public proof plan
 - Adjust source material
 
-If they pick an adjustment option, ask one targeted `AskUserQuestion`, then confirm again.
+If they pick **Adjust source material** or paste a URL/title/path in chat at this step, accept it verbatim for `## Source material`, then confirm again. If they pick another adjustment option, ask one targeted `AskUserQuestion`, then confirm again.
 
 ## Step 2: Choose slug
 
@@ -188,6 +185,11 @@ Derive `slug` from the topic: lowercase, hyphens, no spaces (per AGENTS.md).
 
 ## Step 3: Write brief.md
 
+**`## Source material` rules:**
+- **Default:** `TBD — run /source-scout`
+- **Opening-message source:** if the user's initial message included a URL, arXiv link, paper title, chapter, repo, or file path → write it verbatim instead of TBD
+- **Confirm-step paste:** if the user pasted a link during the confirm recap → write it verbatim instead of TBD
+
 Create `studies/<slug>/brief.md` with this structure:
 
 ```markdown
@@ -208,21 +210,20 @@ Create `studies/<slug>/brief.md` with this structure:
 
 ## Narrow wedge
 <smallest learnable unit — be concrete>
+**Entry angle:** <bases fondamentales | par une histoire | vision d'ensemble — one line how this angle applies>
 
 ## Success criteria
 - [ ] I can explain <X> without jargon
 - [ ] I can answer <Y> from memory
-- [ ] I produced <proof artifact>
-
-## Public proof plan
-<format + audience + draft hook>
 
 ## Source material
-<URLs, papers, chapters, repos — to read against the wedge>
+TBD — run /source-scout
 
 ## Open questions
 - ...
 ```
+
+*(Default `## Source material` to `TBD — run /source-scout`; replace with the verbatim source when captured from the opening message or confirm step.)*
 
 After writing `brief.md`, register the study in the global index:
 
@@ -232,17 +233,59 @@ After writing `brief.md`, register the study in the global index:
 
 (Use the repo-local path if developing outside the symlink.)
 
-## Step 4: Confirm and route
+## Step 4: Handoff — passation et enchaînement
 
-Tell the user:
-- Slug and path to `brief.md`
-- Next step: read a source from `## Source material` in chat (paste URL + wedge), or draft public proof (future `/proof-draft`)
-- Remind: deep over wide — resist scope creep beyond the wedge
+After `brief.md` is written and registered, deliver the closing in **three beats**. Tone inspired by office-hours Phase 6 Handoff — personalized, direct, no ceremony.
+
+**Anti-slop (mandatory):**
+- Quote the user's **actual words** for why now (Q2) and entry angle (Q4) — not paraphrased generics
+- **No** « Félicitations ! », no praise paragraphs, no filler
+- GOOD: « Tu veux comprendre ça parce que [their why now]. Tu commences par [their angle choice]. »
+- BAD: « Votre parcours d'apprentissage est maintenant bien structuré. »
+
+**Interdits inchangés :** ne pas lire ni résumer de source ici ; ne pas créer `proof.md` ; rappeler deep over wide seulement si le wedge sonne trop large (une ligne max).
+
+### Beat 1 — Ce qui vient d'être créé
+
+One short paragraph in plain language:
+
+> Ton étude **« <titre> »** est lancée. Ta feuille de route est dans `studies/<slug>/brief.md` : ton sujet, ton angle d'entrée, tes critères de réussite. C'est le document que tous les autres skills liront.
+
+Personalize with the user's exact phrases — their why now and their chosen angle. Never ship the template sentence alone.
+
+### Beat 2 — Carte du parcours
+
+Show where they are and what follows (short block, no essay):
+
+```
+✅ /bear-hours — cadrage (fait)
+→ /source-scout — trouve 3 sources adaptées à ton angle
+  /dense-read — lecture guidée de la source, tranche par tranche
+  /study-status — à tout moment, pour voir où tu en es
+```
+
+### Beat 3 — Enchaînement direct
+
+**Next skill:** if `## Source material` is still `TBD — run /source-scout` → `/source-scout` ; otherwise → `/dense-read` (source already in the brief).
+
+Call `AskUserQuestion` once:
+
+**Title:** `Bear Hours — On enchaîne ?`
+
+**Ask:** One line — e.g. « On enchaîne sur <slug> ? »
+
+**Options:**
+- **Oui — lance /source-scout maintenant** *(or **Oui — lance /dense-read maintenant** when a source is already listed)*
+- **Plus tard — je m'arrête ici**
+
+**If Oui:** immediately **Read** and follow `source-scout/SKILL.md` or `dense-read/SKILL.md` for this `<slug>` in the **same session** (equivalent to invoking via the Skill tool). Do not stop after the handoff.
+
+**If Plus tard:** one line only — e.g. `Quand tu veux : /source-scout <slug>` or `/dense-read <slug>`.
 
 ## Rules
 
 - Do not start reading or summarizing source material here — framing only
 - Do not open or inspect source documents even if the user supplies URLs or file paths — record them in the brief only
-- Push back on "learn everything about X" — force a wedge
-- Every study must have a public proof plan, even if small (one tweet thread counts)
+- Push back on "learn everything about X" — force a wedge via Q4 entry angle
+- **Never create `proof.md`** (or any standalone proof draft) unless the user explicitly runs `/proof-draft` or asks to draft public proof
 - Cross-project scan: `~/.ours-stack/studies-index.jsonl` only — never `find $HOME` at runtime

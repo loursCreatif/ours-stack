@@ -1,6 +1,6 @@
 # ours-stack
 
-Agent skills for autodidacts — **deep learning**, **dense papers**, **public proof**.
+Agent skills for autodidacts — **deep learning**, **dense papers**, **explain what you learn**.
 
 By [School of the Bear](https://github.com/loursCreatif).
 
@@ -20,8 +20,8 @@ Works in **Claude Code** and **Grok Build**. Run `./setup` once — it links ski
 ## Use
 
 ```
-/bear-hours         → frame the topic      → studies/<slug>/brief.md
-/source-scout       → find sources         → updates ## Source material in brief.md
+/bear-hours         → frame the topic (5 questions) → studies/<slug>/brief.md
+/source-scout       → 3 sources mixtes     → article + YouTube + joker dans brief.md, ouvertes dans le navigateur
 /dense-read         → read anchor source   → studies/<slug>/notes.md
 /deep-research      → research + summary   → research/<slug>/report.md (standalone)
 /layout-html        → page HTML autonome   → report.html / article.html (typo + SVG fidèles)
@@ -77,7 +77,7 @@ Add a skill: copy a folder, write `SKILL.md`, add one line to `AGENTS.md` and th
 
 - **Deep over wide** — one wedge at a time
 - **Dense over shallow** — explain it simply or you don't know it yet
-- **Proof over consumption** — publish something
+- **Explain over consume** — every session tends toward something you can explain
 - **Show your work** — everything lives in `studies/`
 
 ## License

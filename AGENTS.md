@@ -8,7 +8,7 @@ Skills live in subfolders (`bear-hours/`, etc.). Grok Build discovers them via C
 
 - **Deep over wide** — one narrow wedge, mastered
 - **Dense over shallow** — Feynman extraction, open questions, no summary theater
-- **Proof over consumption** — every session tends toward a publishable artifact
+- **Explain over consume** — every session tends toward something you can explain
 - **Show your work** — notes live in `studies/<slug>/`, traceable and revisitable
 
 ## Artifact contract
@@ -37,7 +37,7 @@ studies/<slug>/
 └── memory-palace.html    # /memory-palace (optional)
 ```
 
-No `proof.md` in the default layout — public proof is planned in `brief.md` only. A standalone proof draft file is created **only** when the user explicitly runs `/proof-draft` (future skill).
+No `proof.md` in the default layout. A standalone proof draft file is created **only** when the user explicitly runs `/proof-draft` (future skill).
 
 Standalone deep research (no brief required):
 
@@ -95,8 +95,8 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 
 | Skill | When to use |
 |-------|-------------|
-| `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 7 framing questions (incl. source material), confirm slug before reuse |
-| `/source-scout` | Brief exists, `## Source material` is TBD or thin — wedge-locked parallel search, ranked anchor + core list written to brief |
+| `/bear-hours` | New topic, "what should I learn?", scope unclear — optional scan via `studies-index.jsonl`, 5 framing questions (entry angle → wedge); `## Source material` defaults to TBD — run /source-scout, confirm slug before reuse |
+| `/source-scout` | Brief exists, `## Source material` is TBD or thin — wedge-locked search; exactly 3 sources (article + YouTube + joker), anchor + core in brief; URLs opened in browser |
 | `/dense-read` | Anchor source + brief exist — wedge-locked Feynman extraction from one source → `notes.md`; traceable claims, surprises vs beliefs; stops when wedge covered |
 | `/deep-research` | Standalone — classic funnel: 150–250+ sources discovered & screened (default), 15–25 read in depth, synthesis report + `sources-index.md`. No brief required |
 | `/layout-html` | Finished text → self-contained HTML (editorial typography, 3–7 inline SVG figures quoted from source) — `report.md`, notes, any `.md`/`.txt`, pasted text; opens offline; fidelity over beauty; no new research |
