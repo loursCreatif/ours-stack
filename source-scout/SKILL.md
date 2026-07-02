@@ -213,7 +213,7 @@ Scouted <YYYY-MM-DD> via `/source-scout` :
 
 **Count rule:** exactly 3 sources total (1 anchor + 2 core). No `### Optional` section.
 
-**Honesty rule:** Do not claim a source *answers* a question during scouting. Say it **targets**, **tests**, or is **likely relevant to** the question. Resolution happens in `/dense-read`.
+**Honesty rule:** Do not claim a source *answers* a question during scouting. Say it **targets**, **tests**, or is **likely relevant to** the question. Resolution happens when the anchor is read in depth — not here.
 
 ## Step 5: Confirm before write
 
@@ -238,7 +238,7 @@ If the user cancels or chooses **Keep** at Step 1 smart-skip → do not write; d
 1. Replace or merge `## Source material` in `brief.md`:
    - **Refresh** → replace section entirely
    - **Extend** → replace section with a new set of exactly 3 sources (gap-focused)
-2. **Do not remove** items from `## Open questions`. Reference targeted questions under each source via `Targets:`. Only `/dense-read` may mark questions resolved after extraction.
+2. **Do not remove** items from `## Open questions`. Reference targeted questions under each source via `Targets:`. Do not mark questions resolved here — that happens after reading the anchor.
 3. Re-register study:
 
 ```bash
@@ -258,22 +258,20 @@ xdg-open "<url1>"
 
 One command per URL. Extract URLs from the 3 written sources (anchor + 2 core).
 
-5. **Handoff — passation et enchaînement** (skip if Step 5 cancelled). Three beats — tone like `bear-hours` Step 4; personalized, direct, no ceremony.
+5. **Handoff — passation** (skip if Step 5 cancelled). Two beats — tone like `bear-hours` Step 4; personalized, direct, no ceremony.
 
 **Anti-slop:** quote the `## Narrow wedge` unit; no « Félicitations ! », no filler. GOOD: « Sur [wedge], 3 sources sont dans le brief — commence par [anchor]. » BAD: template sentence alone. One line: scout found sources; it did not read them.
 
-**Beat 1 — Ce qui vient d'être fait:** One short paragraph — 3 sources for **« <wedge unit> »** in `studies/<slug>/brief.md`; if browser opened → **les 3 sources sont ouvertes dans ton navigateur**; name the anchor (read first); video fallback line if slot 2 is not YouTube.
+**Beat 1 — Ce qui vient d'être fait:** One short paragraph — 3 sources for **« <wedge unit> »** in `studies/<slug>/brief.md`; if browser opened → **les 3 sources sont ouvertes dans ton navigateur**; name the anchor (read first); video fallback line if slot 2 is not YouTube. Close with one line: prochaine étape = lire l'anchor toi-même (pas d'enchaînement automatique vers un autre skill).
 
 **Beat 2 — Carte du parcours:**
 
 ```
 ✅ /bear-hours — cadrage (fait)
 ✅ /source-scout — 3 sources trouvées (fait)
-→ /dense-read — lecture guidée de l'anchor, tranche par tranche
+→ lire l'anchor nommée ci-dessus
   /study-status — à tout moment, pour voir où tu en es
 ```
-
-**Beat 3 — Enchaînement:** `AskUserQuestion` — title `Source Scout — On enchaîne ?`, ask « On enchaîne sur /dense-read pour l'anchor de <slug> ? » Options: **Oui — lance /dense-read sur l'anchor maintenant** | **Plus tard — je m'arrête ici**. If Oui → **Read** and follow `dense-read/SKILL.md` for this `<slug>` and anchor in the **same session**; do not stop after handoff. If Plus tard → one line: `Quand tu veux : /dense-read <slug>`.
 
 ## Escape hatches
 
@@ -294,4 +292,4 @@ One command per URL. Extract URLs from the 3 written sources (anchor + 2 core).
 - [ ] ≥1 skipped source documented (proves wedge discipline)
 - [ ] No source already `[x]` in this or related studies
 - [ ] User knows which single source to open first
-- [ ] Handoff delivered (3 beats + enchaînement) unless Step 5 cancelled
+- [ ] Handoff delivered (2 beats) unless Step 5 cancelled
