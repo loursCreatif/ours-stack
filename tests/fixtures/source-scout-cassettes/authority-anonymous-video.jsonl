@@ -1,8 +1,0 @@
-{"tool":"WebSearch","query":"site:energy.gov kilowatt hour electricity meters explained","provider_status":"ok","results":["https://www.energy.gov/energysaver/electric-meters"]}
-{"tool":"WebSearch","query":"homelab power consumption youtube technical lecture","provider_status":"ok","results":["https://www.youtube.com/watch?v=anonclip0001"]}
-{"tool":"WebSearch","query":"PNNL grid energy storage power capacity","provider_status":"ok","results":["https://www.pnnl.gov/grid-energy-storage"]}
-{"tool":"WebSearch","query":"LLM inference energy measurement arxiv","provider_status":"ok","results":["https://arxiv.org/abs/2511.05597"]}
-{"tool":"WebFetch","url":"https://www.energy.gov/energysaver/electric-meters","status":"ok","snippet_chars":11000}
-{"tool":"WebFetch","url":"https://www.youtube.com/watch?v=anonclip0001","status":"ok","snippet_chars":6000,"author":""}
-{"tool":"WebFetch","url":"https://www.pnnl.gov/grid-energy-storage","status":"ok","snippet_chars":22000}
-{"tool":"WebFetch","url":"https://arxiv.org/abs/2511.05597","status":"ok","snippet_chars":9000}

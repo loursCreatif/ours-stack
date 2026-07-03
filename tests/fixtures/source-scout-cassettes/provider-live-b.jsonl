@@ -1,7 +1,0 @@
-{"tool":"WebSearch","query":"PNNL grid battery storage power capacity kW energy kWh technical","provider_status":"ok","results":["https://www.pnnl.gov/grid-energy-storage","https://www.sandia.gov/ess-ssl/docs/pr_conferences/2015/PR%200/3-Sprenkle_PNNL.pdf","https://www.pnnl.gov/sites/default/files/media/file/EGC%20Cost%20Performance%20Report%202022%20PNNL-33283.pdf"]}
-{"tool":"WebSearch","query":"DOE read residential electric meter watthour kilowatt","provider_status":"ok","results":["https://www.energy.gov/energysaver/how-read-residential-electric-and-natural-gas-meters","https://www.energy.gov/energysaver/electric-meters","https://www.energy.gov/energysaver/estimating-appliance-and-home-electronic-energy-use"]}
-{"tool":"WebSearch","query":"From Prompts to Power measuring energy footprint LLM inference arxiv","provider_status":"ok","results":["https://arxiv.org/abs/2511.05597","https://arxiv.org/html/2511.05597v1"]}
-{"tool":"WebSearch","query":"gridpiq energy storage power capacity documentation","provider_status":"ok","results":["https://gridpiq.pnnl.gov/v2-beta/doc/technologies/es/es-energy-power/","https://www.pnnl.gov/grid-energy-storage"]}
-{"tool":"WebFetch","url":"https://www.energy.gov/energysaver/how-read-residential-electric-and-natural-gas-meters","status":"ok","snippet_chars":9800}
-{"tool":"WebFetch","url":"https://gridpiq.pnnl.gov/v2-beta/doc/technologies/es/es-energy-power/","status":"ok","snippet_chars":14000}
-{"tool":"WebFetch","url":"https://arxiv.org/abs/2511.05597","status":"ok","snippet_chars":9200}

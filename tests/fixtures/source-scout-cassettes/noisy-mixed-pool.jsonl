@@ -1,6 +1,0 @@
-{"tool":"WebSearch","query":"site:energy.gov kilowatt hour electricity meters explained","provider_status":"ok","results":["https://www.howtogeek.com/self-hosting-isnt-free/","https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/","https://www.energy.gov/energysaver/electric-meters","https://www.energy.gov/energysaver/estimating-appliance-and-home-electronic-energy-use"]}
-{"tool":"WebSearch","query":"grid battery storage power capacity kW versus energy kWh technical","provider_status":"ok","results":["https://www.linkedin.com/posts/senergiespk_myth-14-battery-kwh-directly-equals-autonomy-activity-7467472800736403457-OH_w","https://gridpiq.pnnl.gov/v2-beta/doc/technologies/es/es-energy-power/","https://www.pnnl.gov/grid-energy-storage"]}
-{"tool":"WebSearch","query":"LLM GPU inference energy measurement paper arxiv","provider_status":"ok","results":["https://arxiv.org/html/2407.16893v2","https://arxiv.org/abs/2511.05597"]}
-{"tool":"WebSearch","query":"homelab GPU power youtube lecture","provider_status":"ok","results":["https://www.youtube.com/watch?v=noiseclip111"]}
-{"tool":"WebFetch","url":"https://www.energy.gov/energysaver/electric-meters","status":"ok","snippet_chars":11000}
-{"tool":"WebFetch","url":"https://arxiv.org/abs/2511.05597","status":"ok","snippet_chars":9000}
