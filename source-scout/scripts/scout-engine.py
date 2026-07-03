@@ -1,77 +1,89 @@
 #!/usr/bin/env python3
-"""Source-scout engine: cassette → dynamic pools → rubric score → pick → brief."""
+"""Source-scout engine: cassette → wedge-token pools → rubric score → pick 3 → brief.
+
+Domain-agnostic: wedge alignment comes from token overlap between the brief and
+each candidate (title + URL path + originating queries + author), with a 5-char
+stem match so French briefs align with English queries (énergie/energy,
+décentralisation/decentralization). No study-specific keyword lists.
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 MIN_SCORE = 9
 MAX_AUTHORITY_CAP = 6  # hard cap when author/channel not identifiable
+STEM_LEN = 5
 
 GENERIC_AUTHORS = frozenset({
     "youtube", "unknown", "anonymous", "n/a", "none", "channel", "creator", "user",
 })
 INSTITUTION_MARKERS = (
-    ".edu", ".gov", "university", "laboratory", "laboratories", "institute", "ieee",
-    "acm", "conference", "prof.", "professor", "dr.", "phd", "stanford", "mit",
-    "pnnl", "sandia", "energy.gov", "arxiv", "tom's hardware", "anandtech",
-    "techpowerup", "department", "college", "school of",
+    ".edu", ".gov", "university", "laboratory", "laboratories", "institute",
+    "ieee", "acm", "conference", "prof.", "professor", "dr.", "phd", "arxiv",
+    "department", "college", "school of",
 )
 
+# Quality rejects (see references/source-tiers.md): social/UGC aggregators,
+# SEO farms, vendor spec pages, generalist finance/wiki primers.
 REJECT_HOSTS = (
-    "howtogeek.com", "buzzfeed.com", "medium.com/@", "linkedin.com", "facebook.com",
-    "threads.com", "tesla.com/learn", "nvidia.com", "investopedia.com", "phemex.com",
-    "coingeek.com", "reddit.com", "wikipedia.org", "nakamotoinstitute.org",
+    "howtogeek.com", "buzzfeed.com", "medium.com/@", "linkedin.com",
+    "facebook.com", "threads.com", "reddit.com", "wikipedia.org",
+    "investopedia.com", "nvidia.com",
 )
 REJECT_PATH = re.compile(
     r"top[-_]?\d+|introduction[-_]to|what[-_]is|best[-_]resources|/specs?/|/learn/", re.I
 )
 
-# Role signals from URL path + search query (generic patterns, not study-specific).
-UNITS_RE = re.compile(
-    r"kilowatt|kilowatthour|kwh|kw[\s_./-]|watthour|watt[\s_./-]hour|measuring|"
-    r"electric[-_/].*meter|electricity.?basics|power.?vs.?energy|utility.?bill|"
-    r"faq.*kilowatt|energysaver|appliance.*energy",
-    re.I,
-)
-STORAGE_RE = re.compile(
-    r"storage|batter|capacity|autonom|grid.?scale|power.?capacity|energy.?capacity|"
-    r"grid.?energy|gridpiq",
-    re.I,
-)
-INFERENCE_RE = re.compile(
-    r"inference|llm|vllm|language.?model|prompt.?to.?power|energy.?footprint|"
-    r"workload",
-    re.I,
-)
-HW_MEASURE_RE = re.compile(
-    r"rtx|geforce|powenetics|power.?draw|tdp|graphics.?card|measured.?power|"
-    r"techpowerup|anandtech|tomshardware",
-    re.I,
-)
+TIER1_HOST_MARKERS = (".gov", "arxiv.org", "doi.org", "ieee.org")
+TIER2_HOST_MARKERS = ("tomshardware.com", "anandtech.com", "techpowerup.com", "igorslab.de")
 
-TIER1_HOST_MARKERS = (
-    ".gov", "arxiv.org", "doi.org", "ieee.org", "pnnl.gov", "nrel.gov", "sandia.gov",
-    "energy.gov", "eia.gov", "ledgerjournal.org",
-)
-TIER2_HOST_MARKERS = (
-    "tomshardware.com", "anandtech.com", "techpowerup.com", "igorslab.de",
-    "fidelitydigitalassets.com",
-)
+STOPWORDS = frozenset({
+    # fr
+    "les", "des", "une", "aux", "est", "sont", "que", "qui", "quoi", "pas",
+    "plus", "pour", "dans", "avec", "sur", "par", "pas", "mais", "donc",
+    "avant", "toute", "tout", "tous", "cette", "ces", "son", "ses", "leur",
+    "peux", "peut", "sans", "entre", "comme", "quel", "quelle", "quels",
+    "quelles", "mon", "moi", "vers", "chez", "ont", "fait", "faire", "être",
+    "etre", "avoir", "aussi", "bien", "premier", "seul", "seule",
+    # en
+    "the", "and", "for", "with", "from", "that", "this", "these", "those",
+    "are", "was", "were", "will", "what", "when", "which", "how", "why",
+    "not", "but", "all", "any", "can", "into", "over", "under", "about",
+    "than", "then", "them", "they", "their", "your", "you", "our", "out",
+    "site", "http", "https", "www", "com", "org", "html", "pdf",
+})
 
-ROLE_UNITS = "units"
-ROLE_STORAGE = "storage"
-ROLE_INFERENCE = "inference"
-ROLE_HW_MEASURE = "hw_measure"
-ROLE_VIDEO = "video"
-ROLE_HOMELAB = "homelab"
+ARXIV_ID_RE = re.compile(r"(\d{4}\.\d{4,5})")
+
+
+def _fold(text: str) -> str:
+    """Lowercase + strip diacritics so French/English stems can match."""
+    nfkd = unicodedata.normalize("NFD", text.lower())
+    return "".join(ch for ch in nfkd if not unicodedata.combining(ch))
+
+
+def _tokens(text: str) -> set[str]:
+    out: set[str] = set()
+    for t in re.findall(r"[a-z0-9]{3,}", _fold(text)):
+        if t in STOPWORDS:
+            continue
+        if t.isdigit() and len(t) != 4:
+            continue  # keep years, drop other bare numbers
+        out.add(t)
+    return out
+
+
+def _stems(tokens: set[str]) -> set[str]:
+    return {t[:STEM_LEN] for t in tokens}
 
 
 @dataclass
@@ -81,10 +93,7 @@ class WedgeSignals:
     open_questions: str
     beliefs: str
     text: str
-    wants_units: bool = False
-    wants_storage: bool = False
-    wants_hardware: bool = False
-    wants_inference: bool = False
+    stems: set[str] = field(default_factory=set)
     consumed: set[str] = field(default_factory=set)
 
     @classmethod
@@ -96,43 +105,16 @@ class WedgeSignals:
         beliefs: str,
         consumed: set[str] | None = None,
     ) -> WedgeSignals:
-        blob = "\n".join((wedge, criteria, open_questions, beliefs)).lower()
+        blob = "\n".join((wedge, criteria, open_questions, beliefs))
         return cls(
             wedge=wedge.strip(),
             criteria=criteria.strip(),
             open_questions=open_questions.strip(),
             beliefs=beliefs.strip(),
             text=blob,
-            wants_units=any(
-                k in blob
-                for k in ("kw", "kwh", "watt", "puissance", "énergie", "unité", "kilowatt")
-            ),
-            wants_storage=any(
-                k in blob for k in ("autonomie", "stockée", "stockage", "batterie", "storage")
-            ),
-            wants_hardware=any(
-                k in blob
-                for k in (
-                    "hardware", "serveur", "labo", "tdp", "rtx", "carte graphique",
-                    "graphics", "accelerator",
-                )
-            ),
-            wants_inference=any(
-                k in blob for k in ("ia", "inférence", "inference", "llm", "vllm", "workload")
-            ),
+            stems=_stems(_tokens(blob)),
             consumed=consumed or set(),
         )
-
-    def primary_anchor_role(self) -> str:
-        if self.wants_units:
-            return ROLE_UNITS
-        if self.wants_storage:
-            return ROLE_STORAGE
-        if self.wants_inference:
-            return ROLE_INFERENCE
-        if self.wants_hardware:
-            return ROLE_HW_MEASURE
-        return ROLE_UNITS
 
 
 @dataclass
@@ -143,12 +125,12 @@ class Candidate:
     title: str
     fmt: str
     tier: int
-    minutes: int
     access: str
-    roles: set[str] = field(default_factory=set)
     fetched: bool = False
     snippet_chars: int = 0
     from_queries: set[str] = field(default_factory=set)
+    co_query: bool = False  # found by a query whose other hit the agent fetched
+    wedge_hits: int = 0
     score: int = 0
     score_note: str = ""
     why: str = ""
@@ -157,7 +139,15 @@ class Candidate:
 
     @property
     def is_youtube(self) -> bool:
-        return ROLE_VIDEO in self.roles
+        return self.fmt == "video"
+
+    @property
+    def minutes(self) -> int:
+        if self.is_youtube:
+            return 15
+        if self.tier <= 2 or self.snippet_chars >= 8000:
+            return 45
+        return 15
 
 
 def norm_key(url: str) -> str:
@@ -166,12 +156,15 @@ def norm_key(url: str) -> str:
     host = p.netloc.lower().removeprefix("www.")
     path = p.path.rstrip("/")
     if "youtube.com" in host and path == "/watch":
-        from urllib.parse import parse_qs
         vid = parse_qs(p.query).get("v", [""])[0]
         if vid:
             return f"youtube.com/watch/{vid.lower()}"
     if host == "youtu.be" and path:
         return f"youtu.be/{path.lstrip('/').lower()}"
+    if "arxiv.org" in host or "ar5iv" in host:
+        pid = ARXIV_ID_RE.search(path)
+        if pid:
+            return f"arxiv/{pid.group(1)}"
     u = f"{host}{path}".lower()
     return u.split("#")[0].split("?")[0]
 
@@ -203,10 +196,6 @@ def parse_brief(path: Path) -> WedgeSignals:
     )
 
 
-def _query_blob(queries: set[str]) -> str:
-    return " ".join(queries).lower()
-
-
 def _domain_tier(host: str) -> int:
     if any(m in host for m in TIER1_HOST_MARKERS):
         return 1
@@ -217,129 +206,64 @@ def _domain_tier(host: str) -> int:
     return 3
 
 
-def _infer_roles(signal_blob: str, signals: WedgeSignals) -> set[str]:
-    roles: set[str] = set()
-    if UNITS_RE.search(signal_blob):
-        roles.add(ROLE_UNITS)
-    if STORAGE_RE.search(signal_blob):
-        roles.add(ROLE_STORAGE)
-    if INFERENCE_RE.search(signal_blob):
-        roles.add(ROLE_INFERENCE)
-    if HW_MEASURE_RE.search(signal_blob):
-        roles.add(ROLE_HW_MEASURE)
-    if "homelab" in signal_blob and signals.wants_hardware:
-        roles.add(ROLE_HOMELAB)
-    return roles
+def _search_hits(row: dict[str, Any]) -> list[tuple[str, str]]:
+    """Accept both cassette shapes: results:[url] and hits:[{url,title}]."""
+    out: list[tuple[str, str]] = []
+    for u in row.get("results") or []:
+        out.append((u, ""))
+    for h in row.get("hits") or []:
+        url = h.get("url", "")
+        title = h.get("title", "")
+        if title == url or title.startswith("http"):
+            title = ""
+        if url:
+            out.append((url, title))
+    return out
 
 
-def _author_label(host: str, tier: int) -> str:
-    if "eia.gov" in host:
-        return "U.S. EIA"
-    if "energy.gov" in host:
-        return "U.S. DOE / Energy Saver"
-    if "pnnl.gov" in host:
-        return "Pacific Northwest National Laboratory"
-    if "sandia.gov" in host:
-        return "Sandia National Laboratories"
-    if "arxiv.org" in host or "ar5iv" in host:
-        return "arXiv preprint"
-    if "ledgerjournal.org" in host:
-        return "Ledger"
-    if "tomshardware.com" in host:
-        return "Tom's Hardware"
-    if "anandtech.com" in host:
-        return "AnandTech"
-    if "techpowerup.com" in host:
-        return "TechPowerUp"
-    if tier <= 2:
-        return host.replace("www.", "")
-    return host.replace("www.", "")
-
-
-def classify_url(url: str, queries: set[str], signals: WedgeSignals) -> Candidate | None:
+def classify_url(url: str, title: str, queries: set[str]) -> Candidate | None:
     if not url.startswith("http"):
         url = f"https://{url}"
     key = norm_key(url)
-    if key in signals.consumed:
-        return None
     host = urlparse(url).netloc.lower()
-    path = urlparse(url).path.lower()
-    qblob = _query_blob(queries)
+    path = unquote(urlparse(url).path)
 
     for rh in REJECT_HOSTS:
         if rh in host:
             return None
-    if REJECT_PATH.search(path):
+    if REJECT_PATH.search(path.lower()):
         return None
     if "youtube.com/shorts" in key:
         return None
 
     if "youtube.com" in host or "youtu.be" in host:
-        slug = path.rstrip("/").split("/")[-1].replace("-", " ").title()
+        vid = key.rsplit("/", 1)[-1]
         return Candidate(
-            url=url, key=key, author="", title=slug or "Video",
-            fmt="video", tier=3, minutes=15, access="open access",
-            roles={ROLE_VIDEO}, from_queries=queries,
+            url=url, key=key, author="", title=title or f"YouTube {vid}",
+            fmt="video", tier=3, access="open access", from_queries=queries,
         )
 
     tier = _domain_tier(host)
-    path_roles = _infer_roles(path, signals)
-    query_roles = _infer_roles(qblob, signals)
-
-    if "arxiv.org" in host or "ar5iv" in host:
-        roles = set(path_roles)
-        roles |= query_roles & {ROLE_INFERENCE, ROLE_HW_MEASURE}
-        if not roles and signals.wants_inference:
-            roles.add(ROLE_INFERENCE)
-    elif tier <= 2:
-        roles = path_roles | query_roles
-    else:
-        roles = path_roles | (query_roles & path_roles)
-
-    if tier == 1 and not roles and signals.wants_units and re.search(r"electric|energy|meter", path, re.I):
-        roles.add(ROLE_UNITS)
-
-    if not roles:
-        return None
-    if not _on_wedge(roles, signals):
-        return None
-
-    slug = path.rstrip("/").split("/")[-1].replace("-", " ").replace("_", " ").title() or host
-    if "arxiv" in host:
-        pid = re.search(r"(\d{4}\.\d{4,5})", path)
-        slug = f"arXiv {pid.group(1)}" if pid else "arXiv paper"
-    minutes = 45 if ROLE_INFERENCE in roles and tier == 1 else 15
-    fmt = "article"
-
+    slug = path.rstrip("/").split("/")[-1]
+    slug = re.sub(r"\.(html?|pdf|php)$", "", slug, flags=re.I)
+    slug = slug.replace("-", " ").replace("_", " ").strip().title() or host.removeprefix("www.")
+    if key.startswith("arxiv/"):
+        slug = f"arXiv {key.removeprefix('arxiv/')}"
     return Candidate(
-        url=url, key=key, author=_author_label(host, tier), title=slug,
-        fmt=fmt, tier=tier, minutes=minutes, access="open access",
-        roles=roles, from_queries=queries,
+        url=url, key=key, author=host.removeprefix("www."), title=title or slug,
+        fmt="article", tier=tier, access="open access", from_queries=queries,
     )
 
 
-def _on_wedge(roles: set[str], signals: WedgeSignals) -> bool:
-    if ROLE_UNITS in roles and signals.wants_units:
-        return True
-    if ROLE_STORAGE in roles and signals.wants_storage:
-        return True
-    if ROLE_INFERENCE in roles and (signals.wants_inference or signals.wants_hardware):
-        return True
-    if ROLE_HW_MEASURE in roles and signals.wants_hardware:
-        return True
-    if ROLE_VIDEO in roles and (
-        signals.wants_hardware or signals.wants_inference or signals.wants_units
-    ):
-        return True
-    if ROLE_HOMELAB in roles and signals.wants_hardware:
-        return True
-    return False
+def _candidate_blob(c: Candidate) -> str:
+    return " ".join((c.title, unquote(urlparse(c.url).path), c.url, c.author, *c.from_queries))
 
 
 def build_candidates(
     cassette: list[dict[str, Any]], signals: WedgeSignals
 ) -> tuple[list[Candidate], dict[str, Any]]:
     url_queries: dict[str, set[str]] = {}
+    url_titles: dict[str, str] = {}
     fetches: dict[str, dict[str, Any]] = {}
     youtube_attempt = False
     primary_queries: list[str] = []
@@ -352,130 +276,153 @@ def build_candidates(
                 primary_queries.append(q)
             if re.search(r"youtube|video|demo", q, re.I):
                 youtube_attempt = True
-            for u in row.get("results") or []:
+            if (row.get("provider_status") or "ok") != "ok":
+                continue
+            for u, title in _search_hits(row):
                 url_queries.setdefault(u, set()).add(q)
+                if title:
+                    url_titles.setdefault(u, title)
         elif tool == "WebFetch":
-            key = norm_key(row.get("url", ""))
-            fetches[key] = {
+            if (row.get("status") or "ok") != "ok":
+                continue
+            url = row.get("url", "")
+            fetches[norm_key(url)] = {
+                "url": url,
                 "snippet_chars": int(row.get("snippet_chars") or 0),
                 "author": (row.get("author") or "").strip(),
             }
 
     by_key: dict[str, Candidate] = {}
     for url, queries in url_queries.items():
-        c = classify_url(url, queries, signals)
-        if not c:
+        c = classify_url(url, url_titles.get(url, ""), queries)
+        if not c or c.key in signals.consumed:
             continue
         if c.key in by_key:
             by_key[c.key].from_queries |= queries
-            by_key[c.key].roles |= c.roles
         else:
+            by_key[c.key] = c
+
+    # A fetched URL is a candidate even if no logged search returned it.
+    for key, info in fetches.items():
+        if key in by_key or key in signals.consumed:
+            continue
+        c = classify_url(info["url"], "", set())
+        if c:
             by_key[c.key] = c
 
     for c in by_key.values():
         if c.key in fetches:
             c.fetched = True
             c.snippet_chars = fetches[c.key]["snippet_chars"]
-            logged_author = fetches[c.key]["author"]
-            if logged_author:
-                c.author = logged_author
+            if fetches[c.key]["author"]:
+                c.author = fetches[c.key]["author"]
+
+    queries_with_fetch = {
+        q for c in by_key.values() if c.fetched for q in c.from_queries
+    }
+    for c in by_key.values():
+        c.wedge_hits = len(_stems(_tokens(_candidate_blob(c))) & signals.stems)
+        c.co_query = bool(c.from_queries & queries_with_fetch)
+
+    # On-wedge filter: fetched (agent screened it), token overlap with the
+    # brief, or sibling of a query the agent judged good enough to fetch from.
+    pool = [c for c in by_key.values() if c.fetched or c.wedge_hits >= 1 or c.co_query]
 
     ctx = {
         "youtube_attempt": youtube_attempt,
-        "youtube_fetch_count": sum(1 for k in fetches if "youtube.com" in k or "youtu.be" in k),
+        "youtube_fetch_count": sum(
+            1 for k in fetches if "youtube.com" in k or "youtu.be" in k
+        ),
         "primary_queries": primary_queries,
     }
-    return list(by_key.values()), ctx
+    return pool, ctx
 
 
 def _author_identifiable(c: Candidate) -> bool:
     raw = (c.author or "").strip()
     if not raw:
         return False
-    low = raw.lower()
-    if low in GENERIC_AUTHORS:
+    if raw.lower() in GENERIC_AUTHORS:
         return False
-    if c.tier <= 2 and not c.is_youtube:
-        return True
     if c.is_youtube:
         return len(raw) >= 4
     return len(raw) >= 3
+
+
+def _is_institutional(c: Candidate) -> bool:
+    blob = f"{c.author} {c.key}".lower()
+    return any(m in blob for m in INSTITUTION_MARKERS)
 
 
 def _authority_score(c: Candidate) -> float:
     """Authority / traceability — max 1.5 (15 %)."""
     if not _author_identifiable(c):
         return 0.0
-    blob = f"{c.author} {c.key}".lower()
-    if c.tier <= 2:
+    if not c.is_youtube and c.tier <= 2:
         return 1.5
-    if any(m in blob for m in INSTITUTION_MARKERS):
+    if _is_institutional(c):
         return 1.5
     if c.is_youtube and c.fetched:
-        return 1.2
-    if c.tier == 3:
-        return 0.8
-    return 0.5
+        return 1.3
+    if c.fetched:
+        return 1.0
+    return 0.8
 
 
-def _role_slot_match(c: Candidate, role: str, signals: WedgeSignals) -> float:
+def _alignment_score(c: Candidate) -> float:
     """Wedge alignment — max 3.5 (35 %)."""
-    primary = signals.primary_anchor_role()
-    if role == "anchor":
-        if primary in c.roles:
-            return 3.5 if c.fetched else 3.0
-        return 1.5
-    if role == "video":
-        return 3.5 if c.fetched else 1.5
-    slot_roles = {
-        "storage": ROLE_STORAGE,
-        "inference": ROLE_INFERENCE,
-        "hw_measure": ROLE_HW_MEASURE,
-        "fallback": None,
-    }
-    if role in slot_roles and role != "fallback":
-        if slot_roles[role] in c.roles:
-            return 3.5
-        return 1.5
-    if role == "fallback" and c.roles:
+    if c.fetched:
+        return 3.5
+    if c.wedge_hits >= 2 or c.co_query:
+        return 3.2
+    if c.wedge_hits >= 1:
         return 3.0
     return 1.5
 
 
-def _brief_overlap(c: Candidate, signals: WedgeSignals) -> float:
-    """Open question / belief — max 1.5 (15 %)."""
-    blob = f"{c.title} {c.author} {c.key} {_query_blob(c.from_queries)}".lower()
-    hits = sum(1 for token in re.findall(r"[a-zàâçéèêëîïôùûü]{4,}", signals.text) if token in blob)
-    base = 1.2 if c.tier <= 2 else 0.6
+def _density_score(c: Candidate) -> float:
+    """Density — max 2.5 (25 %). A fetched video is a screened demo/talk."""
+    if c.is_youtube:
+        return 1.5 if c.fetched else 1.0
+    base = {1: 2.5, 2: 2.0}.get(c.tier, 1.0)
     if c.fetched:
-        base = max(base, 1.2)
-    if any(m in c.author.lower() for m in INSTITUTION_MARKERS):
-        base = max(base, 1.5)
-    if hits >= 3:
+        if c.snippet_chars >= 10000:
+            base += 1.0
+        elif c.snippet_chars >= 5000:
+            base += 0.5
+        elif c.snippet_chars >= 3000:
+            base += 0.3
+    return min(2.5, base)
+
+
+def _question_score(c: Candidate) -> float:
+    """Open question / belief — max 1.5 (15 %)."""
+    if c.wedge_hits >= 3:
         return 1.5
-    if hits >= 1:
-        return max(base, 1.4)
-    return base
+    if c.wedge_hits >= 1:
+        return 1.4
+    if c.fetched or c.tier <= 2:
+        return 1.2
+    return 0.8
 
 
-def rubric_score(c: Candidate, role: str, signals: WedgeSignals, picked_roles: set[str]) -> int:
+def rubric_score(c: Candidate, picked_hosts: set[str]) -> int:
     """0–10 rubric: wedge 35 % · density 25 % · authority 15 % · question 15 % · access 5 % · redundant 5 %."""
-    align = _role_slot_match(c, role, signals)
-    density = {1: 2.5, 2: 2.0, 3: 1.0, 4: 0.5}.get(c.tier, 0.5)
-    if c.fetched and c.snippet_chars >= 5000:
-        density = min(2.5, density + 0.5)
-    elif c.fetched and c.snippet_chars >= 3000:
-        density = min(2.5, density + 0.3)
-
-    authority = _authority_score(c)
-    question = _brief_overlap(c, signals)
-    accessible = 0.5 if c.tier <= 2 or "arxiv" in c.key or ".gov" in c.key else 0.25
-    redundant = 0.5 if role != "anchor" or not (c.roles & picked_roles) else 0.0
-
     if c.is_youtube and not c.fetched:
-        return 5
+        return 5  # never eligible: SKILL requires WebFetch on every Pool V survivor
 
-    total = align + density + authority + question + accessible + redundant
+    host = urlparse(c.url).netloc.lower().removeprefix("www.")
+    accessible = 0.5 if c.tier <= 2 else 0.4
+    redundant = 0.0 if host in picked_hosts else 0.5
+
+    total = (
+        _alignment_score(c)
+        + _density_score(c)
+        + _authority_score(c)
+        + _question_score(c)
+        + accessible
+        + redundant
+    )
     if not _author_identifiable(c):
         total = min(total, float(MAX_AUTHORITY_CAP))
     return int(min(10, max(0, total + 0.499)))
@@ -512,212 +459,147 @@ def _role_label(role: str) -> str:
     return {
         "anchor": "anchor écrit",
         "video": "vidéo Pool V",
-        "storage": "stockage/autonomie",
-        "inference": "mesure inférence/workload",
-        "hw_measure": "mesure tierce hardware",
-        "fallback": "complément on-wedge",
+        "fallback": "fallback slot vidéo",
+        "joker": "joker on-wedge",
     }.get(role, role)
 
 
-def _apply_copy(
-    c: Candidate, role: str, signals: WedgeSignals, video_fallback: bool = False
-) -> None:
+def _apply_copy(c: Candidate, role: str, signals: WedgeSignals) -> None:
     hook = _brief_hook(signals)
     c.slot = "anchor" if role == "anchor" else "core"
-    prefix = "**Slot vidéo fallback** — " if video_fallback else ""
     if role == "anchor":
         c.why = f"Référence écrite dense — alignée sur le wedge : {hook}"
     elif role == "video":
         c.why = f"Vidéo technique sur le wedge (cours, conférence, démo) — {hook}"
-    elif role == "storage":
-        c.why = f"{prefix}Couvre stockage/autonomie liée au wedge — {hook}"
-    elif role == "inference":
-        c.why = f"{prefix}Mesures workload/inférence locale — {hook}"
-    elif role == "hw_measure":
-        c.why = (
-            f"{prefix}Mesure tierce puissance hardware — peak labo, pas spec vendeur ; "
-            f"{hook}"
-        )
+    elif role == "fallback":
+        c.why = f"**Slot vidéo fallback** — meilleure source écrite disponible sur le wedge — {hook}"
     else:
-        c.why = f"{prefix}Couverture complémentaire on-wedge — {hook}"
+        c.why = f"Couverture complémentaire on-wedge — {hook}"
     c.targets = _targets_for_role(role, signals)
     if c.fetched and c.snippet_chars >= 3000:
         fetch_note = "WebFetch validé"
     elif c.fetched:
-        fetch_note = "snippet partiel"
+        fetch_note = "WebFetch (snippet court)"
     else:
         fetch_note = "snippet seul"
-    auth_note = "auteur identifié" if _author_identifiable(c) else "auteur non identifiable (cap ≤6)"
+    auth_note = "auteur identifié" if _author_identifiable(c) else f"auteur non identifiable (cap ≤{MAX_AUTHORITY_CAP})"
     c.score_note = f"Tier {c.tier}, {_role_label(role)}, {fetch_note}, {auth_note}."
 
 
 def _rank(c: Candidate) -> tuple:
-    return (-c.score, -int(c.fetched), -c.snippet_chars, -int(c.tier == 1), -c.tier, c.key)
-
-
-def _anchor_rank(c: Candidate, signals: WedgeSignals) -> tuple:
-    primary = signals.primary_anchor_role()
-    focused = int(primary in c.roles and ROLE_STORAGE not in c.roles) if primary == ROLE_UNITS else int(
-        primary in c.roles and len(c.roles) == 1
+    return (
+        -c.score, -int(c.fetched), -c.snippet_chars, -c.wedge_hits,
+        -int(c.tier == 1), -c.tier, c.key,
     )
-    return (-c.score, -focused, -int(c.fetched), -c.snippet_chars, -int(c.tier == 1), c.key)
 
 
-def _anchor_pool(candidates: list[Candidate], signals: WedgeSignals) -> list[Candidate]:
-    primary = signals.primary_anchor_role()
-    pool = [
-        c for c in candidates
-        if primary in c.roles and not c.is_youtube
-    ]
-    if signals.wants_units:
-        pool = [c for c in pool if "arxiv" not in c.key]
-    if not pool:
-        pool = [
-            c for c in candidates
-            if not c.is_youtube and c.roles and "arxiv" not in c.key
-        ]
-    return pool
-
-
-def _score_role(c: Candidate, signals: WedgeSignals, picked_roles: set[str]) -> str:
-    if ROLE_INFERENCE in c.roles:
-        return "inference"
-    if ROLE_HW_MEASURE in c.roles:
-        return "hw_measure"
-    if ROLE_STORAGE in c.roles:
-        return "storage"
-    return "fallback"
+def _picked_hosts(picks: list[Candidate]) -> set[str]:
+    return {urlparse(c.url).netloc.lower().removeprefix("www.") for c in picks}
 
 
 def pick_three(
     candidates: list[Candidate], ctx: dict[str, Any], signals: WedgeSignals
 ) -> tuple[Candidate, Candidate, Candidate, list[str]]:
-    skipped: list[str] = []
-    picked_roles: set[str] = set()
+    written = [c for c in candidates if not c.is_youtube]
+    videos = [c for c in candidates if c.is_youtube]
 
-    anchor_pool = _anchor_pool(candidates, signals)
+    # Anchor: best fetched written source (SKILL: anchor is WebFetch-validated).
+    anchor_pool = [c for c in written if c.fetched]
     if not anchor_pool:
-        raise SystemExit("engine: no anchor pool in cassette")
-
+        raise SystemExit(
+            "engine: no fetched written candidate — WebFetch the anchor before running"
+        )
     for c in anchor_pool:
-        c.score = rubric_score(c, "anchor", signals, picked_roles)
-    anchor_pool.sort(key=lambda c: _anchor_rank(c, signals))
+        c.score = rubric_score(c, set())
+    anchor_pool.sort(key=_rank)
     anchor = anchor_pool[0]
     if anchor.score < MIN_SCORE:
         raise SystemExit(f"engine: best anchor scores {anchor.score}/10 < {MIN_SCORE}")
     _apply_copy(anchor, "anchor", signals)
-    picked_roles |= anchor.roles
+    picks = [anchor]
 
-    youtube_strong = ctx["youtube_fetch_count"] > 0
-    video_candidates = [c for c in candidates if c.is_youtube]
+    # Slot 2: best fetched video >= MIN_SCORE, else best written fallback.
     core_a: Candidate | None = None
-
-    if youtube_strong:
-        for c in video_candidates:
-            c.score = rubric_score(c, "video", signals, picked_roles)
-        video_candidates.sort(key=_rank)
-        if video_candidates and video_candidates[0].score >= MIN_SCORE:
-            core_a = video_candidates[0]
-            _apply_copy(core_a, "video", signals)
-            picked_roles |= core_a.roles
-
+    for c in videos:
+        c.score = rubric_score(c, _picked_hosts(picks))
+    fetched_videos = sorted((c for c in videos if c.fetched), key=_rank)
+    if fetched_videos and fetched_videos[0].score >= MIN_SCORE:
+        core_a = fetched_videos[0]
+        _apply_copy(core_a, "video", signals)
     if core_a is None:
-        video_fallback = ctx["youtube_attempt"] or True
-        storage_pool = [c for c in candidates if ROLE_STORAGE in c.roles and c.key != anchor.key]
-        inference_pool = [c for c in candidates if ROLE_INFERENCE in c.roles and c.key != anchor.key]
-        hw_pool = [
-            c for c in candidates
-            if ROLE_HW_MEASURE in c.roles and c.fetched and c.key != anchor.key
-        ]
+        fallback_pool = [c for c in written if c.key != anchor.key]
+        for c in fallback_pool:
+            c.score = rubric_score(c, _picked_hosts(picks))
+        fallback_pool.sort(key=_rank)
+        if not fallback_pool or fallback_pool[0].score < MIN_SCORE:
+            raise SystemExit("engine: video fallback pool exhausted (no written source >= 9/10)")
+        core_a = fallback_pool[0]
+        _apply_copy(core_a, "fallback", signals)
+    picks.append(core_a)
 
-        if signals.wants_storage and storage_pool and ctx["youtube_attempt"]:
-            for c in storage_pool:
-                c.score = rubric_score(c, "storage", signals, picked_roles)
-            storage_pool.sort(key=_rank)
-            if storage_pool[0].score >= MIN_SCORE:
-                core_a = storage_pool[0]
-                _apply_copy(core_a, "storage", signals, video_fallback=True)
-
-        if core_a is None and inference_pool and not ctx["youtube_attempt"]:
-            for c in inference_pool:
-                c.score = rubric_score(c, "inference", signals, picked_roles)
-            inference_pool.sort(key=_rank)
-            if inference_pool[0].score >= MIN_SCORE:
-                core_a = inference_pool[0]
-                _apply_copy(core_a, "inference", signals, video_fallback=True)
-
-        if core_a is None and storage_pool:
-            for c in storage_pool:
-                c.score = rubric_score(c, "storage", signals, picked_roles)
-            storage_pool.sort(key=_rank)
-            if storage_pool[0].score >= MIN_SCORE:
-                core_a = storage_pool[0]
-                _apply_copy(core_a, "storage", signals, video_fallback=True)
-
-        if core_a is None and inference_pool:
-            for c in inference_pool:
-                c.score = rubric_score(c, "inference", signals, picked_roles)
-            inference_pool.sort(key=_rank)
-            if inference_pool[0].score >= MIN_SCORE:
-                core_a = inference_pool[0]
-                _apply_copy(core_a, "inference", signals, video_fallback=True)
-
-        if core_a is None:
-            raise SystemExit("engine: video fallback pool exhausted")
-
-    picked_roles |= core_a.roles
-    used = {anchor.key, core_a.key}
-
-    remainder = [c for c in candidates if c.key not in used and not c.is_youtube]
+    # Joker: best remaining written source or second fetched video.
+    used = {c.key for c in picks}
+    remainder = [
+        c for c in candidates
+        if c.key not in used and (not c.is_youtube or c.fetched)
+    ]
     for c in remainder:
-        slot_role = _score_role(c, signals, picked_roles)
-        c.score = rubric_score(c, slot_role, signals, picked_roles)
-
-    def _joker_rank(c: Candidate) -> tuple:
-        boost = 0
-        if signals.wants_hardware or signals.wants_inference:
-            if ROLE_INFERENCE in c.roles:
-                boost = 2
-            elif ROLE_HW_MEASURE in c.roles:
-                boost = 1
-        return (-c.score, -boost, -int(c.fetched), -c.snippet_chars, c.key)
-
-    remainder.sort(key=_joker_rank)
-    core_b: Candidate | None = None
-    for c in remainder:
-        if c.score >= MIN_SCORE:
-            core_b = c
-            slot_role = _score_role(c, signals, picked_roles)
-            _apply_copy(c, slot_role, signals)
-            break
-
+        c.score = rubric_score(c, _picked_hosts(picks))
+    remainder.sort(key=_rank)
+    core_b = next((c for c in remainder if c.score >= MIN_SCORE), None)
     if core_b is None:
-        raise SystemExit("engine: no joker candidate >= 9/10 in remainder pool")
+        raise SystemExit(f"engine: no joker candidate >= {MIN_SCORE}/10 in remainder pool")
+    _apply_copy(core_b, "joker", signals)
+    picks.append(core_b)
 
-    if ctx["youtube_attempt"] and not youtube_strong:
-        skipped.append("*YouTube pool* — timeboxé, aucun WebFetch retenu → fallback article.")
-    for c in video_candidates:
-        if c.key not in used and c.key != core_a.key:
-            if not _author_identifiable(c) or c.score <= MAX_AUTHORITY_CAP:
-                skipped.append(f"*{c.title}* — auteur/chaîne non identifiable (autorité ≤{MAX_AUTHORITY_CAP}/10).")
-            else:
-                skipped.append(f"*{c.title}* — rejet pool V (faible densité / hors barème).")
-    for c in candidates:
-        if ROLE_HOMELAB in c.roles and c.key not in used:
-            skipped.append(f"*{c.title}* — Tier 3 homelab blog, swap vers Tier 1–2.")
-        if c.tier >= 3 and c.key not in used and c.key not in {core_b.key}:
-            if len(skipped) < 3:
-                skipped.append(f"*{c.title}* — Tier 3, remplacé par source plus dense.")
+    skipped = _skipped_lines(candidates, picks, ctx)
+    return anchor, core_a, core_b, skipped
+
+
+def _skipped_lines(
+    candidates: list[Candidate], picks: list[Candidate], ctx: dict[str, Any]
+) -> list[str]:
+    used = {c.key for c in picks}
+    skipped: list[str] = []
+
+    unfetched_videos = [c for c in candidates if c.is_youtube and not c.fetched and c.key not in used]
+    if unfetched_videos:
+        names = ", ".join(c.title for c in unfetched_videos[:2])
+        more = f" (+{len(unfetched_videos) - 2})" if len(unfetched_videos) > 2 else ""
+        skipped.append(f"*{names}{more}* — Pool V non fetchées (timebox) — non éligibles.")
+
+    for c in (c for c in candidates if c.is_youtube and c.fetched and c.key not in used):
+        if not _author_identifiable(c):
+            skipped.append(
+                f"*{c.title}* — chaîne/auteur non identifiable (autorité ≤{MAX_AUTHORITY_CAP}/10)."
+            )
+        else:
+            skipped.append(f"*{c.title}* — vidéo fetchée {c.score}/10 < {MIN_SCORE} → slot vidéo en fallback.")
+
+    if ctx["youtube_attempt"] and not any(c.is_youtube for c in candidates):
+        skipped.append("*Pool V* — recherche vidéo tentée, aucun candidat exploitable → fallback article.")
+
+    for c in sorted(
+        (c for c in candidates if not c.is_youtube and c.key not in used), key=_rank
+    ):
+        if len(skipped) >= 3:
+            break
+        reason = (
+            f"score {c.score}/10 < {MIN_SCORE}, hors set final"
+            if 0 < c.score < MIN_SCORE
+            else "battu au rang par une source plus dense"
+        )
+        skipped.append(f"*{c.title}* — {reason}.")
 
     if not skipped:
         skipped.append("*Sources adjacentes* — hors wedge, rejetées en pool.")
-
-    return anchor, core_a, core_b, skipped[:3]
+    return skipped[:3]
 
 
 def format_source(c: Candidate) -> str:
+    author = c.author or "?"
     return (
-        f"- [ ] **{c.author}** — *{c.title}* — {c.url}\n"
+        f"- [ ] **{author}** — *{c.title}* — {c.url}\n"
         f"  - Format: {c.fmt}\n"
         f"  - Tier: {c.tier} · ~{c.minutes} min · {c.access}\n"
         f"  - Why: {c.why}\n"
@@ -728,25 +610,16 @@ def format_source(c: Candidate) -> str:
 
 def render_section(
     anchor: Candidate, core_a: Candidate, core_b: Candidate, skipped: list[str],
-    signals: WedgeSignals | None = None,
+    video_fallback: bool,
 ) -> str:
     today = date.today().isoformat()
-    roles = anchor.roles | core_a.roles | core_b.roles
-    parts: list[str] = []
-    if signals:
-        if ROLE_UNITS in roles and signals.wants_units:
-            parts.append("unités")
-        if ROLE_STORAGE in roles and signals.wants_storage:
-            parts.append("autonomie kW/kWh")
-        if ROLE_INFERENCE in roles or ROLE_HW_MEASURE in roles:
-            if signals.wants_inference or signals.wants_hardware:
-                parts.append("conso hardware/inférence")
-        if ROLE_VIDEO in roles:
-            parts.append("angle vidéo")
-    set_note = (
-        f"Wedge couvert : {', '.join(parts) or '3 slots on-wedge'} ; "
-        "fallback vidéo documenté si utilisé."
+    formats = " + ".join(c.fmt for c in (anchor, core_a, core_b))
+    fallback_note = (
+        "slot vidéo en fallback article (aucune vidéo ≥9/10)"
+        if video_fallback
+        else "slot vidéo servi par une vidéo fetchée"
     )
+    set_note = f"3 slots on-wedge ({formats}) ; {fallback_note}."
 
     lines = [
         "## Source material", "",
@@ -769,48 +642,40 @@ def merge_brief(brief_path: Path, section: str, out_path: Path) -> None:
     out_path.write_text(text)
 
 
-def wedge_coverage(
-    anchor: Candidate, core_a: Candidate, core_b: Candidate, signals: WedgeSignals
-) -> dict[str, bool]:
-    all_roles = anchor.roles | core_a.roles | core_b.roles
-    return {
-        "units": not signals.wants_units or ROLE_UNITS in all_roles,
-        "storage_or_autonomy": not signals.wants_storage or ROLE_STORAGE in all_roles,
-        "hardware_or_inference": (
-            not (signals.wants_hardware or signals.wants_inference)
-            or ROLE_INFERENCE in all_roles
-            or ROLE_HW_MEASURE in all_roles
-        ),
-    }
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description="source-scout engine")
     ap.add_argument("--brief", required=True, type=Path)
     ap.add_argument("--cassette", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
-    ap.add_argument("--json", type=Path, help="manifest with roles + coverage")
+    ap.add_argument("--json", type=Path, help="manifest with picks + coverage")
     args = ap.parse_args()
 
     signals = parse_brief(args.brief)
     cassette = load_cassette(args.cassette)
     candidates, ctx = build_candidates(cassette, signals)
     anchor, core_a, core_b, skipped = pick_three(candidates, ctx, signals)
+    video_fallback = core_a.fmt != "video"
 
-    merge_brief(args.brief, render_section(anchor, core_a, core_b, skipped, signals), args.out)
+    merge_brief(
+        args.brief,
+        render_section(anchor, core_a, core_b, skipped, video_fallback),
+        args.out,
+    )
 
     if args.json:
-        cov = wedge_coverage(anchor, core_a, core_b, signals)
+        picks = [anchor, core_a, core_b]
         manifest = {
             "anchor": anchor.url,
-            "anchor_roles": sorted(anchor.roles),
             "core": [core_a.url, core_b.url],
-            "core_roles": [sorted(core_a.roles), sorted(core_b.roles)],
-            "scores": {anchor.url: anchor.score, core_a.url: core_a.score, core_b.url: core_b.score},
-            "wedge_coverage": cov,
+            "formats": [c.fmt for c in picks],
+            "scores": {c.url: c.score for c in picks},
+            "wedge_coverage": {
+                "on_wedge_picks": all(c.fetched or c.wedge_hits >= 1 for c in picks),
+                "wedge_hits": {c.url: c.wedge_hits for c in picks},
+            },
             "primary_queries": ctx["primary_queries"],
             "youtube_attempt": ctx["youtube_attempt"],
-            "video_fallback": core_a.fmt != "video",
+            "video_fallback": video_fallback,
             "pool_size": len(candidates),
         }
         args.json.write_text(json.dumps(manifest, indent=2) + "\n")

@@ -297,6 +297,8 @@ Save live captures to `studies/<slug>/provider.log` before calling `source-scout
 | Wedge mentions autonomie / batteries / stockage | Add **Storage** query → official source on **power capacity (kW)** vs **energy capacity (kWh)** |
 | Cloud/API-only energy paper | Local GPU + vLLM measurement paper when wedge is *home lab* |
 
+*(Domain examples — the engine is domain-agnostic: it derives wedge alignment from brief-token overlap, so these preferences emerge from generic scoring — fetched > unfetched, measured/dense > vendor/listicle — not from per-topic rules.)*
+
 ### Quality gate — score /10 before write (Step 4b)
 
 Score **each finalist** on a **0–10** scale (same weights as ranking). Record internally:

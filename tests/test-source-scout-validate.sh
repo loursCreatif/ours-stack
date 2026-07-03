@@ -13,7 +13,7 @@ SYNC="$ROOT/bin/ours-stack-source-scout-sync-transcript-from-raw"
 LOG="$ROOT/bin/ours-stack-source-scout-log-tool"
 CASSETTES="$ROOT/tests/fixtures/source-scout-cassettes"
 TEMPLATE="$ROOT/tests/fixtures/brief-home-energy-template.md"
-SCRATCH="${SOURCE_SCOUT_TEST_SCRATCH:-/var/folders/nb/hms4jttd77xfdkwyqtwbx79w0000gn/T/grok-goal-8fb9af07d01a/implementer}"
+SCRATCH="${SOURCE_SCOUT_TEST_SCRATCH:-$(mktemp -d)}"
 mkdir -p "$SCRATCH"
 
 for bin in "$RUN" "$LIVE" "$VALIDATE" "$PREFLIGHT" "$TRANSCRIPT_CHECK" "$EVIDENCE" "$SYNC" "$LOG"; do
@@ -27,8 +27,7 @@ ok() { echo "PASS: $*"; pass=$((pass + 1)); }
 
 assert_manifest() {
   local man="$1" label="$2"
-  jq -e '.wedge_coverage.units == true' "$man" >/dev/null || fail "$label: missing units"
-  jq -e '.wedge_coverage.hardware_or_inference == true' "$man" >/dev/null || fail "$label: missing hardware/inference"
+  jq -e '.wedge_coverage.on_wedge_picks == true' "$man" >/dev/null || fail "$label: picks not on-wedge"
   jq -e '[.scores[]] | all(. >= 9)' "$man" >/dev/null || fail "$label: score < 9"
   jq -e '.pool_size >= 3' "$man" >/dev/null || fail "$label: pool too small"
   # Anchor must not be arXiv (units doc, not paper)
@@ -54,8 +53,11 @@ run_cassette() {
 
 # 0 — anti-overfit: engine must not hardcode study topics or URL/video IDs
 ENGINE="$ROOT/source-scout/scripts/scout-engine.py"
-if grep -inE 'bitcoin|genesis|7ujlqilwy84|3tknrphc140|4090|gpu' "$ENGINE" >/dev/null; then
+if grep -inE 'bitcoin|genesis|satoshi|nakamoto|coinbase|7ujlqilwy84|3tknrphc140|4090|gpu' "$ENGINE" >/dev/null; then
   fail "engine contains hardcoded domain or URL tokens"
+fi
+if grep -inE 'kilowatt|kwh|inference|workload|homelab|vllm|batter|storage|energy.gov|pnnl|sandia|eia\.gov' "$ENGINE" >/dev/null; then
+  fail "engine contains hardcoded energy-study tokens"
 fi
 if grep -inE 'youtube\.com/watch/[a-zA-Z0-9_-]{8,}|youtu\.be/[a-zA-Z0-9_-]{8,}' "$ENGINE" >/dev/null; then
   fail "engine contains hardcoded YouTube video IDs"
@@ -182,7 +184,7 @@ cassette = ns['load_cassette'](Path('$AUTH_ANON'))
 cands, _ = ns['build_candidates'](cassette, signals)
 videos = [c for c in cands if c.is_youtube]
 assert videos, 'missing youtube candidate'
-score = ns['rubric_score'](videos[0], 'video', signals, set())
+score = ns['rubric_score'](videos[0], set())
 assert score <= 6, f'anonymous video score {score} > 6'
 "
 ok "anonymous on-wedge video ≤6/10 and article fallback"
@@ -206,7 +208,7 @@ cassette = ns['load_cassette'](Path('$AUTH_EXP'))
 cands, _ = ns['build_candidates'](cassette, signals)
 videos = [c for c in cands if c.is_youtube]
 assert videos, 'missing youtube candidate'
-score = ns['rubric_score'](videos[0], 'video', signals, set())
+score = ns['rubric_score'](videos[0], set())
 assert score >= 9, f'named expert video score {score} < 9'
 "
 ok "named expert conference video ≥9/10"
@@ -219,6 +221,27 @@ AUTH_RAW="$SCRATCH/authority-log-raw.jsonl"
   --snippet-chars 5000 --author "Dr. Sam Okonkwo — IEEE Power & Energy Society"
 tail -1 "$AUTH_RAW" | jq -e '.author == "Dr. Sam Okonkwo — IEEE Power & Energy Society"' >/dev/null || fail "author not in raw log"
 ok "log-tool --author round-trip"
+
+# 13 — cross-domain regression: history-topic brief + real captured cassette
+# (engine must fill slot 2 with the fetched named-expert video, not an article fallback,
+#  and must not leak another study's vocabulary into the brief)
+TOPIC_TEMPLATE="$ROOT/tests/fixtures/brief-topic-history-template.md"
+TOPIC_CASSETTE="$CASSETTES/provider-topic-history.jsonl"
+[ -f "$TOPIC_TEMPLATE" ] || fail "missing $TOPIC_TEMPLATE"
+topic_brief="$SCRATCH/topic-history-brief.md"
+topic_man="$SCRATCH/topic-history-manifest.json"
+cp "$TOPIC_TEMPLATE" "$topic_brief"
+"$RUN" --brief "$topic_brief" --cassette "$TOPIC_CASSETTE" --run-id topic \
+  --out "$topic_brief" --raw "$SCRATCH/topic-history-raw.jsonl" \
+  --transcript "$SCRATCH/topic-history-tr.jsonl" --manifest "$topic_man" \
+  >"$SCRATCH/topic-history-run.log" 2>&1 || { cat "$SCRATCH/topic-history-run.log" >&2; fail "topic-history run"; }
+"$VALIDATE" "$topic_brief" >/dev/null 2>&1 || fail "topic-history validate"
+jq -e '.video_fallback == false' "$topic_man" >/dev/null || fail "fetched named video must win slot 2"
+jq -e '.formats | index("video") != null' "$topic_man" >/dev/null || fail "no video format in picks"
+grep -q "youtube.com/watch" "$topic_brief" || fail "video pick missing from brief"
+grep -qiE "workload|inférence locale|kilowatt" "$topic_brief" && fail "energy-study vocabulary leaked into topic brief"
+grep -q "auteur identifié" "$topic_brief" || fail "authority notes missing"
+ok "cross-domain: real cassette → video slot filled, no vocabulary leak"
 
 echo "Summary: $pass tests passed"
 exit 0
