@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Cross-check scout-raw.jsonl (live tool capture) against scout-transcript.jsonl.
+set -euo pipefail
+
+RAW="${1:-}"
+TRANSCRIPT="${2:-}"
+
+usage() {
+  echo "Usage: ours-stack-source-scout-evidence-check <scout-raw.jsonl> <scout-transcript.jsonl>" >&2
+  exit 2
+}
+
+[ -n "$RAW" ] && [ -f "$RAW" ] || usage
+[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || usage
+
+fail() { echo "evidence-check: $*" >&2; exit 1; }
+
+command -v jq >/dev/null 2>&1 || fail "jq required"
+
+[ -s "$RAW" ] || fail "raw file empty"
+[ -s "$TRANSCRIPT" ] || fail "transcript empty"
+
+# Build raw index by seq
+raw_by_seq="$(mktemp)"
+jq -c -s 'map({key: (.seq|tostring), value: .}) | from_entries' "$RAW" >"$raw_by_seq"
+
+# Every raw WebSearch/WebFetch must appear in transcript via raw_seq
+while IFS= read -r rline; do
+  [ -z "$rline" ] && continue
+  rtool="$(echo "$rline" | jq -r '.tool')"
+  rseq="$(echo "$rline" | jq -r '.seq')"
+  case "$rtool" in
+    WebSearch|WebFetch)
+      tc="$(jq -s --arg s "$rseq" '[.[] | select(.raw_seq == ($s|tonumber))] | length' "$TRANSCRIPT")"
+      [ "$tc" -ge 1 ] || fail "raw seq $rseq ($rtool) missing from transcript"
+      ;;
+  esac
+done <"$RAW"
+
+# Every transcript tool line (except gates) must link to raw
+while IFS= read -r tline; do
+  [ -z "$tline" ] && continue
+  ttool="$(echo "$tline" | jq -r '.tool')"
+  case "$ttool" in
+    preflight|validate) continue ;;
+    WebSearch|WebFetch)
+      tseq="$(echo "$tline" | jq -r '.raw_seq // empty')"
+      tts="$(echo "$tline" | jq -r '.ts // empty')"
+      [ -n "$tseq" ] || fail "transcript $ttool missing raw_seq"
+      [ -n "$tts" ] || fail "transcript $ttool seq $tseq missing ts"
+      rline="$(jq -r --arg s "$tseq" '.[$s] // empty' "$raw_by_seq")"
+      [ -n "$rline" ] || fail "transcript raw_seq $tseq not in raw file"
+      rtool="$(echo "$rline" | jq -r '.tool')"
+      [ "$rtool" = "$ttool" ] || fail "seq $tseq tool mismatch raw=$rtool transcript=$ttool"
+      if [ "$ttool" = "WebSearch" ]; then
+        tq="$(echo "$tline" | jq -r '.query')"
+        rq="$(echo "$rline" | jq -r '.query')"
+        [ "$tq" = "$rq" ] || fail "seq $tseq query mismatch"
+        # transcript results must come from raw hits
+        while IFS= read -r url; do
+          [ -z "$url" ] && continue
+          echo "$rline" | jq -e --arg u "$url" '[.hits[]?.url] | index($u) != null' >/dev/null \
+            || fail "seq $tseq URL not in raw hits: $url"
+        done < <(echo "$tline" | jq -r '.results[]?')
+      else
+        tu="$(echo "$tline" | jq -r '.url')"
+        ru="$(echo "$rline" | jq -r '.url')"
+        [ "$tu" = "$ru" ] || fail "seq $tseq fetch url mismatch"
+      fi
+      ;;
+  esac
+done <"$TRANSCRIPT"
+
+rm -f "$raw_by_seq"
+echo "evidence-check: OK — raw↔transcript linkage verified"
+exit 0

@@ -10,9 +10,11 @@ Real literature reviews **search wide, screen hard, read deep**. The agent canno
 | **2. Screen** (title + abstract relevance) | 8–12 | 25–40 | **50–80** | **300–500** |
 | **3. Eligible** (on-topic, accessible, tier OK) | 5–8 | 15–25 | **25–40** | **60–100** |
 | **4. Read in depth** | 2–3 | 8–12 | **15–25** | **40–60** |
-| **5. Cited in synthesis** | 3–5 | 10–15 | **20–35** | **50–80** |
+| **5. Cited in synthesis** | ≤2–3 | ≤8–12 | ≤15–25 | ≤40–60 |
 
-**Depth gate:** agent asks via `AskUserQuestion` before discovery (see SKILL.md Step 0b). Smart-skip only when the user already named a mode. Recommended default in the picker: `literature-review` (150–250+ discovered).
+**Rule:** synthesis cites **only** sources read in depth — cited count never exceeds read count for the mode.
+
+**Depth gate:** agent asks via interactive question before discovery (see SKILL.md Step 0c). Smart-skip only when the user already named a mode. Recommended default in the picker: `literature-review` (150–250+ discovered).
 
 ## Stage 1 — Discover (cast a wide net)
 
@@ -45,7 +47,7 @@ Real literature reviews **search wide, screen hard, read deep**. The agent canno
 | # | Title | URL | Found via | Screen |
 ```
 
-`Screen` values: `pending` → `include` | `exclude` | `eligible` | `read`
+`Screen` values: `pending` → `include` | `exclude` | `eligible` | `read` | `read-failed`
 
 ## Stage 2 — Screen (title + abstract)
 
@@ -78,13 +80,13 @@ Cap eligible pool per mode (table above). Rank eligible; top N become `read`.
 
 ## Stage 4 — Read in depth
 
-Full `WebFetch` (or PDF mirror) for every `read` source. Extract structured notes internally before synthesis.
+Full `WebFetch` (or PDF mirror) for every `read` source. Extract structured notes to `notes.md` as you go (see SKILL.md Step 5). On fetch failure → `read-failed`, promote next eligible.
 
 ## Stage 5 — Report
 
-- **Synthesis** draws from `read` sources only
+- **Synthesis** draws from `read` sources only — cited ≤ read
 - **`sources-index.md`** is the audit trail (all 150–250+ discovered)
-- **Report** includes funnel counts + link to full index
+- **Report** includes funnel counts + link to full index; written in the user's language
 
 ## Honesty when tools cap discovery
 

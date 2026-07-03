@@ -1,0 +1,5 @@
+{"tool":"WebSearch","query":"utility bill understanding kilowatt watthour electricity DOE","provider_status":"ok","results":["https://betterbuildingssolutioncenter.energy.gov/sites/default/files/attachments/BP%20Understanding%20your%20Utility%20Bill%20-%20Electricity_FINAL.pdf","https://www.energy.gov/energysaver/electric-meters"]}
+{"tool":"WebSearch","query":"vLLM inference energy footprint GPU arxiv measurement","provider_status":"ok","results":["https://arxiv.org/abs/2511.05597","https://ar5iv.labs.arxiv.org/html/2511.05597v1"]}
+{"tool":"WebSearch","query":"sandia PNNL battery storage cost performance characterization","provider_status":"ok","results":["https://www.sandia.gov/ess-ssl/wp-content/uploads/2019/07/PNNL_mjp_Storage-Cost-and-Performance-Characterization-Report_Final.pdf","https://www.pnnl.gov/sites/default/files/media/file/ESGC%20Cost%20Performance%20Report%202022%20PNNL-33283.pdf"]}
+{"tool":"WebFetch","url":"https://arxiv.org/abs/2511.05597","status":"ok","snippet_chars":8500}
+{"tool":"WebFetch","url":"https://www.energy.gov/energysaver/electric-meters","status":"ok","snippet_chars":11000}

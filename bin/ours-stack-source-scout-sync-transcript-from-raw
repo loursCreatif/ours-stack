@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Build scout-transcript.jsonl tool lines from scout-raw.jsonl (WebSearch/WebFetch only).
+set -euo pipefail
+
+RAW="${1:-}"
+TRANSCRIPT="${2:-}"
+
+usage() {
+  echo "Usage: ours-stack-source-scout-sync-transcript-from-raw <scout-raw.jsonl> <scout-transcript.jsonl>" >&2
+  exit 2
+}
+
+[ -n "$RAW" ] && [ -f "$RAW" ] || usage
+[ -n "$TRANSCRIPT" ] || usage
+
+command -v jq >/dev/null 2>&1 || { echo "sync-from-raw: jq required" >&2; exit 1; }
+
+: >"$TRANSCRIPT"
+
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  tool="$(echo "$line" | jq -r '.tool // empty')"
+  case "$tool" in
+    WebSearch)
+      echo "$line" | jq -c '{
+        tool: "WebSearch",
+        ts: .ts,
+        raw_seq: .seq,
+        query: .query,
+        results: [.hits[]?.url],
+        provider_status: (.provider_status // "ok")
+      }' >>"$TRANSCRIPT"
+      ;;
+    WebFetch)
+      echo "$line" | jq -c '{
+        tool: "WebFetch",
+        ts: .ts,
+        raw_seq: .seq,
+        url: .url,
+        status: (.status // "ok"),
+        snippet_chars: (.snippet_chars // null)
+      }' >>"$TRANSCRIPT"
+      ;;
+  esac
+done <"$RAW"
+
+echo "sync-from-raw: OK — wrote $(wc -l <"$TRANSCRIPT" | tr -d ' ') tool lines to $TRANSCRIPT"
+exit 0

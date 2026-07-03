@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Source-scout entry point: cassette → engine (pool/score/pick) → log-tool → gates.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ENGINE="$REPO_ROOT/source-scout/scripts/scout-engine.py"
+INGEST="$REPO_ROOT/bin/ours-stack-source-scout-ingest-provider-log"
+SYNC="$REPO_ROOT/bin/ours-stack-source-scout-sync-transcript-from-raw"
+FINALIZE="$REPO_ROOT/bin/ours-stack-source-scout-finalize-transcript"
+VALIDATE="$REPO_ROOT/bin/ours-stack-source-scout-validate"
+
+BRIEF=""
+CASSETTE=""
+OUT=""
+RUN_ID=""
+RAW=""
+TRANSCRIPT=""
+MANIFEST=""
+
+usage() {
+  echo "Usage: ours-stack-source-scout-run --brief <brief.md> --cassette <provider.jsonl> --run-id N [--out <brief-out.md>] [--raw <scout-raw.jsonl>] [--transcript <scout-transcript.jsonl>]" >&2
+  exit 2
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --brief) BRIEF="$2"; shift 2 ;;
+    --cassette) CASSETTE="$2"; shift 2 ;;
+    --out) OUT="$2"; shift 2 ;;
+    --run-id) RUN_ID="$2"; shift 2 ;;
+    --raw) RAW="$2"; shift 2 ;;
+    --transcript) TRANSCRIPT="$2"; shift 2 ;;
+    --manifest) MANIFEST="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) echo "unknown arg: $1" >&2; usage ;;
+  esac
+done
+
+[ -n "$BRIEF" ] && [ -f "$BRIEF" ] || usage
+[ -n "$CASSETTE" ] && [ -f "$CASSETTE" ] || usage
+[ -n "$RUN_ID" ] || usage
+
+[ -f "$ENGINE" ] || { echo "source-scout-run: missing $ENGINE" >&2; exit 1; }
+[ -x "$INGEST" ] || { echo "source-scout-run: ingest-provider-log missing" >&2; exit 1; }
+
+slug="$(basename "$(dirname "$BRIEF")")"
+OUT="${OUT:-$BRIEF}"
+RAW="${RAW:-$REPO_ROOT/studies/$slug/scout-raw.jsonl}"
+TRANSCRIPT="${TRANSCRIPT:-$REPO_ROOT/studies/$slug/scout-transcript.jsonl}"
+MANIFEST="${MANIFEST:-}"
+
+engine_args=(python3 "$ENGINE" --brief "$BRIEF" --cassette "$CASSETTE" --out "$OUT")
+[ -n "$MANIFEST" ] && engine_args+=(--json "$MANIFEST")
+
+"${engine_args[@]}"
+
+"$INGEST" "$CASSETTE" "$RAW" "$RUN_ID"
+"$SYNC" "$RAW" "$TRANSCRIPT"
+"$FINALIZE" "$TRANSCRIPT" "$OUT" "$RAW"
+"$VALIDATE" "$OUT" >/dev/null
+
+echo "source-scout-run: OK — run $RUN_ID set >=9/10, gates passed → $OUT"
+exit 0

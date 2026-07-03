@@ -2,6 +2,8 @@
 
 Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research.md`.
 
+**Language:** write the report in the **user's language**. Section headings below may be translated. Source titles remain in their original language.
+
 ```markdown
 # <Research title>
 
@@ -22,6 +24,8 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 | Eligible | <N> |
 | Read in depth | <N> |
 | Cited in synthesis | <N> |
+
+<Cited in synthesis must be ≤ Read in depth. Synthesis cites only deep-read sources.>
 
 <If literature-review and N_discovered < 150: note shortfall + missing query angles>
 
@@ -70,6 +74,12 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 |--------|------|-------------------|
 | ... | 2 | Covered by survey X |
 
+### Read failed
+
+| Source | Reason |
+|--------|--------|
+| ... | 403 / paywall / unreadable PDF |
+
 ### Exclusion summary (top reasons)
 
 | Reason code | Count | Example |
@@ -80,7 +90,7 @@ Copy this structure into `research/<slug>/report.md` or `studies/<slug>/research
 
 ## Open questions
 
-- <What this research did not resolve>
+- <What this research did not resolve — include any SUB_QUESTION from the plan not answered in synthesis>
 - ...
 
 ## Recommended next steps

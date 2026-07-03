@@ -33,7 +33,13 @@ Use this to rank fast. **Default pick order: Tier 1 → Tier 2 → Tier 3.** Tie
 | Conference talk | Named speaker, technical depth | ICRA talk with results slide |
 | YouTube (scout slot 2) | `site:youtube.com`, lecture/talk/demo on wedge | University course, ICRA recording |
 
-**Use when:** wedge needs "what exists today" or maker-accessible reference. Never as sole anchor unless wedge is purely applied survey. `/source-scout` reserves one of exactly 3 picks for YouTube (or honest article/site fallback if none on-wedge).
+**Authority signals (Accept):** named conference speaker; institutional channel (university, lab, standards body, established technical media); site/channel whose **corpus is specialized** in the wedge domain.
+
+**Authority signals (Reject):** anonymous or unverifiable channel; channel whose main corpus is **off-wedge**; narration likely generated without citable sources.
+
+**Use when:** wedge needs "what exists today" or maker-accessible reference. Never as sole anchor unless wedge is purely applied survey. `/source-scout` screens a **pool** of YouTube candidates (~10 on-wedge if available, **timebox 2 min / 3 WebFetch**) before picking slot 2; rejects teasers, trailers, SEO tutorials, superficial recaps. Log channel/speaker identity on every Pool V `WebFetch`. Honest **article/site Tier 1–3 fallback** if no video passes the bar — never a weak off-wedge or anonymous video.
+
+**Swap preference (energy / GPU wedges):** third-party **measured** power (review lab, Powenetics-style) **>** vendor spec sheet **>** homelab blog for final picks when scoring for ≥9/10.
 
 ## Tier 4 — Bootstrap only (rare)
 
@@ -55,6 +61,10 @@ Mark Tier 4 as `bootstrap only — read <15 min then switch to anchor`.
 | Duplicate coverage | Second tripod-gait explainer when one suffices |
 | Broken / gated with no alternative | Wastes user time |
 | AI-generated summary sites | No primary traceability |
+| YouTube teaser / trailer / hype clip | No density; wastes slot 2 |
+| YouTube generalist primer | Vocabulary only; not wedge mechanism |
+| Anonymous / unidentifiable author or channel | No traceability; engine caps ≤6/10 → article fallback |
+| Off-domain channel corpus | Speaker identity known but content habitually outside wedge |
 
 ## Access labels
 

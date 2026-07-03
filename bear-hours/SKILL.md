@@ -24,7 +24,7 @@ Frame *what* to learn and *why* before reading anything. Like YC office hours, b
 
 ## Interactive questions
 
-Use the **`AskUserQuestion`** tool for every framing question (Claude Code native; Grok Build maps it to the same CLI widget as plan mode).
+Use the native **`AskUserQuestion`** / user-input tool exposed by the current runtime for every framing question.
 
 **Hard rules:**
 - **Never** list numbered questions in chat — always call `AskUserQuestion`
@@ -228,10 +228,10 @@ TBD — run /source-scout
 After writing `brief.md`, register the study in the global index:
 
 ```bash
-~/.claude/skills/ours-stack/bin/ours-stack-register-study studies/<slug>/brief.md
+bin/ours-stack-register-study studies/<slug>/brief.md
 ```
 
-(Use the repo-local path if developing outside the symlink.)
+(Run from the repo root; use the equivalent repo-local path if invoked from elsewhere.)
 
 ## Step 4: Handoff — passation et enchaînement
 

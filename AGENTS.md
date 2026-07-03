@@ -1,8 +1,8 @@
 # ours-stack
 
-Install: `git clone … ~/.claude/skills/ours-stack && ./setup`
+Install: `git clone … ours-stack && cd ours-stack && ./setup`
 
-Skills live in subfolders (`bear-hours/`, etc.). Grok Build discovers them via Claude compat.
+Skills live in subfolders (`bear-hours/`, etc.). `./setup` exposes them through local compatibility links for supported runtimes.
 
 ## Ethos
 
@@ -103,7 +103,7 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 | `/mind-map` | Interactive mind map from brief/notes/report — `mind-map.json` (editable) + `mind-map.html` (pan/zoom, expand/collapse, source links); no new research |
 | `/memory-palace` | Oblique relief map (method of loci) — click buildings, drill-down interiors, concept panel; `memory-palace.json` + `.html`; no FPS movement |
 | `/infographic` | One memorable visual from existing study/research text — `image_gen` when available, else export prompt (`/visual-proof` alias) |
-| `/council` | Multi-agent council for a study wedge or learning plan — dynamic panel, disagreement, synthesis, Codex fusion, `council.md` artifact |
+| `/council` | Multi-agent council for a study wedge or learning plan — dynamic panel, disagreement, final fusion, `council.md` artifact |
 | `/dialogue` | 1-on-1 Socratic dialogue with a historical/public figure — persona card + transcript; challenges beliefs; informed epistemic mode default (alias `/dialogue-historique`) |
 | `/study-status` | Read-only dashboard — criteria checked, artifacts on disk, suggested next step per study; local `studies/` + optional `~/.ours-stack/studies-index.jsonl`; no file writes |
 

@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+# Health checks for ours-stack repo — skills, docs, scripts, Grok symlinks.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+AGENTS="$REPO_ROOT/AGENTS.md"
+README="$REPO_ROOT/README.md"
+
+FAIL=0
+PASS=0
+NOTE=0
+
+ok()   { echo "  ✓ $*"; PASS=$((PASS + 1)); }
+fail() { echo "  ✗ $*"; FAIL=$((FAIL + 1)); }
+note() { echo "  · $*"; NOTE=$((NOTE + 1)); }
+
+check_skill_frontmatter() {
+  local skill_md="$1"
+  local skill_dir
+  skill_dir="$(basename "$(dirname "$skill_md")")"
+
+  if ! head -1 "$skill_md" | grep -q '^---$'; then
+    fail "$skill_dir/SKILL.md — missing opening --- frontmatter"
+    return
+  fi
+
+  local block
+  block="$(awk 'BEGIN{n=0} /^---$/{n++; if(n==2) exit; next} n==1{print}' "$skill_md")"
+
+  if ! grep -qE '^name:[[:space:]]*.+' <<<"$block"; then
+    fail "$skill_dir/SKILL.md — frontmatter missing name:"
+    return
+  fi
+
+  if ! grep -qE '^description:[[:space:]]*' <<<"$block"; then
+    fail "$skill_dir/SKILL.md — frontmatter missing description:"
+    return
+  fi
+
+  ok "$skill_dir/SKILL.md — frontmatter name + description"
+}
+
+skill_in_file() {
+  local needle="$1"
+  local file="$2"
+  grep -qE "(^|[^a-z-])/(${needle})([^a-z-]|$)" "$file" 2>/dev/null
+}
+
+echo "ours-stack doctor — $REPO_ROOT"
+echo ""
+
+# --- SKILL frontmatter ---
+echo "Skills — frontmatter"
+shopt -s nullglob
+skill_mds=("$REPO_ROOT"/*/SKILL.md)
+if [ ${#skill_mds[@]} -eq 0 ]; then
+  fail "no */SKILL.md found under repo root"
+else
+  for skill_md in "${skill_mds[@]}"; do
+    check_skill_frontmatter "$skill_md"
+  done
+fi
+echo ""
+
+# --- Docs coverage ---
+echo "Skills — documentation (README.md + AGENTS.md table)"
+for skill_md in "${skill_mds[@]}"; do
+  skill_dir="$(basename "$(dirname "$skill_md")")"
+  fm_name="$(awk '/^---$/{n++; next} n==1 && /^name:/{sub(/^name:[[:space:]]*/,""); print; exit}' "$skill_md")"
+
+  if skill_in_file "$skill_dir" "$README" || { [ -n "$fm_name" ] && skill_in_file "$fm_name" "$README"; }; then
+    ok "README.md lists /$skill_dir"
+  else
+    fail "README.md missing /$skill_dir (or /$fm_name)"
+  fi
+
+  if skill_in_file "$skill_dir" "$AGENTS" || { [ -n "$fm_name" ] && skill_in_file "$fm_name" "$AGENTS"; }; then
+    ok "AGENTS.md lists /$skill_dir"
+  else
+    fail "AGENTS.md skills table missing /$skill_dir (or /$fm_name)"
+  fi
+done
+
+# Documented in AGENTS table but no skill folder
+while IFS= read -r doc_skill; do
+  [ -z "$doc_skill" ] && continue
+  if [ ! -f "$REPO_ROOT/$doc_skill/SKILL.md" ]; then
+    fail "AGENTS.md documents /$doc_skill but $doc_skill/SKILL.md missing"
+  fi
+done < <(awk -F'`' '/^\| `\/[^`]+` \|/ { skill=$2; sub(/^\//, "", skill); print skill }' "$AGENTS")
+echo ""
+
+# --- shellcheck ---
+echo "Shell scripts"
+if command -v shellcheck >/dev/null 2>&1; then
+  shell_targets=("$REPO_ROOT/setup")
+  for f in "$REPO_ROOT"/bin/*; do
+    [ -f "$f" ] && shell_targets+=("$f")
+  done
+  if shellcheck "${shell_targets[@]}"; then
+    ok "shellcheck setup + bin/*"
+  else
+    fail "shellcheck reported issues (see above)"
+  fi
+else
+  note "shellcheck not installed — skip (brew install shellcheck)"
+fi
+echo ""
+
+# --- flat skill orphan symlinks ---
+echo "Flat skill symlinks (~/.grok/skills/)"
+orphans=0
+if [ -d "$HOME/.grok/skills" ]; then
+  for link in "$HOME/.grok/skills"/*; do
+    [ -L "$link" ] || continue
+    target="$(readlink "$link")"
+    case "$target" in
+      "$REPO_ROOT"/*)
+        if [ ! -e "$target" ]; then
+          fail "orphan symlink $(basename "$link") → $target"
+          orphans=$((orphans + 1))
+        fi
+        ;;
+    esac
+  done
+  if [ "$orphans" -eq 0 ]; then
+    ok "no orphan flat skill symlinks pointing into this repo"
+  fi
+else
+  note "~/.grok/skills/ not found — run ./setup"
+fi
+echo ""
+
+# --- jq ---
+echo "Dependencies"
+if command -v jq >/dev/null 2>&1; then
+  ok "jq available"
+else
+  note "jq not in PATH — register-study uses python3 fallback; backfill needs jq"
+fi
+echo ""
+
+echo "Summary: $PASS passed, $FAIL failed, $NOTE noted"
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi

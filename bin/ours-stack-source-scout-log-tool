@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Append one live WebSearch/WebFetch capture to scout-raw.jsonl (agent call after each tool).
+set -euo pipefail
+
+RAW=""
+TOOL=""
+QUERY=""
+URL=""
+STATUS="ok"
+PROVIDER_STATUS="ok"
+SNIPPET_CHARS=""
+AUTHOR=""
+RUN=""
+URLS=()
+
+usage() {
+  echo "Usage: ours-stack-source-scout-log-tool --raw FILE --tool WebSearch|WebFetch [options]" >&2
+  echo "  WebSearch: --run N --query Q --urls url1,url2,..." >&2
+  echo "  WebFetch:  --run N --url U [--status ok|error] [--snippet-chars N] [--author NAME]" >&2
+  exit 2
+}
+
+fail() { echo "log-tool: $*" >&2; exit 1; }
+
+command -v jq >/dev/null 2>&1 || fail "jq required"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --raw) RAW="${2:-}"; shift 2 ;;
+    --tool) TOOL="${2:-}"; shift 2 ;;
+    --run) RUN="${2:-}"; shift 2 ;;
+    --query) QUERY="${2:-}"; shift 2 ;;
+    --url) URL="${2:-}"; shift 2 ;;
+    --urls) IFS=',' read -r -a URLS <<<"${2:-}"; shift 2 ;;
+    --status) STATUS="${2:-}"; shift 2 ;;
+    --provider-status) PROVIDER_STATUS="${2:-}"; shift 2 ;;
+    --snippet-chars) SNIPPET_CHARS="${2:-}"; shift 2 ;;
+    --author) AUTHOR="${2:-}"; shift 2 ;;
+    -h|--help) usage ;;
+    *) fail "unknown arg: $1" ;;
+  esac
+done
+
+[ -n "$RAW" ] || usage
+[ -n "$TOOL" ] || usage
+[ -n "$RUN" ] || fail "--run required"
+
+mkdir -p "$(dirname "$RAW")"
+
+seq=1
+if [ -s "$RAW" ]; then
+  seq="$(($(jq -s '[.[] | .seq] | max // 0' "$RAW") + 1))"
+fi
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+case "$TOOL" in
+  WebSearch)
+    [ -n "$QUERY" ] || fail "WebSearch requires --query"
+    if [ "${#URLS[@]}" -ge 1 ] && [ -n "${URLS[0]}" ]; then
+      hits="$(printf '%s\n' "${URLS[@]}" | jq -R -s -c '
+        split("\n") | map(select(length>0)) | map({url: ., title: .})')"
+    elif [ "$PROVIDER_STATUS" = "error" ]; then
+      hits='[]'
+    else
+      fail "WebSearch requires --urls (or --provider-status error)"
+    fi
+    jq -cn \
+      --argjson seq "$seq" \
+      --arg run "$RUN" \
+      --arg ts "$ts" \
+      --arg query "$QUERY" \
+      --arg ps "$PROVIDER_STATUS" \
+      --argjson hits "$hits" \
+      '{seq:$seq,run:(if ($run|test("^[0-9]+$")) then ($run|tonumber) else $run end),ts:$ts,tool:"WebSearch",query:$query,provider:"WebSearch",provider_status:$ps,hits:$hits}' >>"$RAW"
+    ;;
+  WebFetch)
+    [ -n "$URL" ] || fail "WebFetch requires --url"
+    has_sc=0 has_author=0
+    [ -n "$SNIPPET_CHARS" ] && has_sc=1
+    [ -n "$AUTHOR" ] && has_author=1
+    if [ "$has_sc" -eq 1 ] && [ "$has_author" -eq 1 ]; then
+      jq -cn --argjson seq "$seq" --arg run "$RUN" --arg ts "$ts" --arg url "$URL" \
+        --arg status "$STATUS" --argjson sc "$SNIPPET_CHARS" --arg author "$AUTHOR" \
+        '{seq:$seq,run:(if ($run|test("^[0-9]+$")) then ($run|tonumber) else $run end),ts:$ts,tool:"WebFetch",url:$url,status:$status,snippet_chars:$sc,author:$author}' >>"$RAW"
+    elif [ "$has_sc" -eq 1 ]; then
+      jq -cn --argjson seq "$seq" --arg run "$RUN" --arg ts "$ts" --arg url "$URL" \
+        --arg status "$STATUS" --argjson sc "$SNIPPET_CHARS" \
+        '{seq:$seq,run:(if ($run|test("^[0-9]+$")) then ($run|tonumber) else $run end),ts:$ts,tool:"WebFetch",url:$url,status:$status,snippet_chars:$sc}' >>"$RAW"
+    elif [ "$has_author" -eq 1 ]; then
+      jq -cn --argjson seq "$seq" --arg run "$RUN" --arg ts "$ts" --arg url "$URL" \
+        --arg status "$STATUS" --arg author "$AUTHOR" \
+        '{seq:$seq,run:(if ($run|test("^[0-9]+$")) then ($run|tonumber) else $run end),ts:$ts,tool:"WebFetch",url:$url,status:$status,author:$author}' >>"$RAW"
+    else
+      jq -cn --argjson seq "$seq" --arg run "$RUN" --arg ts "$ts" --arg url "$URL" --arg status "$STATUS" \
+        '{seq:$seq,run:(if ($run|test("^[0-9]+$")) then ($run|tonumber) else $run end),ts:$ts,tool:"WebFetch",url:$url,status:$status}' >>"$RAW"
+    fi
+    ;;
+  *) fail "unsupported tool: $TOOL" ;;
+esac
+
+echo "log-tool: OK seq=$seq tool=$TOOL → $RAW"
+exit 0

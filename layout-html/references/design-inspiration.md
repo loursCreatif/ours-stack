@@ -1,6 +1,6 @@
 # Design inspiration — rapport intégré
 
-> Le sous-agent de recherche n’a pas pu finir (WebSearch en panne). Ce fichier consolide la recherche manuelle + avis Codex + patterns volés dans les repos open source.
+> Le sous-agent de recherche n’a pas pu finir (WebSearch en panne). Ce fichier consolide la recherche manuelle + avis consultatif + patterns volés dans les repos open source.
 
 ## Top 15 — classés par pertinence
 
@@ -14,7 +14,7 @@
 | 6 | **Stripe Press** | https://press.stripe.com | Opener magazine, serif display, rythme large | `editorial` |
 | 7 | **Neo-brutalism** | https://brutalist-web.design | Bordures épaisses, ombres dures, clash coloré contrôlé | `creative` |
 | 8 | **HyperFrames / Pretext** | skill `gstack-design-html` | HTML autonome, layouts calculés, zéro deps | tous |
-| 9 | **frontend-design** | skill Cursor officiel | Éviter AI slop, hiérarchie typo forte | tous |
+| 9 | **frontend-design** | skill de design frontend | Éviter AI slop, hiérarchie typo forte | tous |
 | 10 | **Academic Markdown CSS** | https://github.com/sindresorhus/github-markdown-css | Tables, code blocks pro (extraits utiles) | `academic` |
 | 11 | **Sakura** | https://github.com/oxalorg/sakura | Micro-framework classless, serif doux | `warm`, `editorial` |
 | 12 | **MVP.css** | https://github.com/andybrewer/mvp | Article HTML minimal sans classes | `minimal` |

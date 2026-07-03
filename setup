@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$HOME/.claude/skills" "$HOME/.grok/skills"
 ln -sfn "$REPO_ROOT" "$HOME/.claude/skills/ours-stack"
 
-# Remove orphaned Grok skill symlinks pointing into this repo (stale skill renames).
+# Remove orphaned flat skill symlinks pointing into this repo (stale skill renames).
 for link in "$HOME/.grok/skills"/*; do
   [ -L "$link" ] || continue
   target="$(readlink "$link")"
@@ -18,7 +18,7 @@ for link in "$HOME/.grok/skills"/*; do
   esac
 done
 
-# Grok Build discovers ~/.grok/skills/<name>/SKILL.md — not nested ours-stack paths.
+# Some runtimes discover flat ~/.grok/skills/<name>/SKILL.md links, not nested ours-stack paths.
 for skill_dir in "$REPO_ROOT"/*/SKILL.md; do
   [ -f "$skill_dir" ] || continue
   skill_name="$(basename "$(dirname "$skill_dir")")"
@@ -37,8 +37,8 @@ else
 fi
 
 echo "ours-stack ready"
-echo "  claude -> ~/.claude/skills/ours-stack"
-echo "  grok   -> ~/.grok/skills/{bear-hours,source-scout,...}"
+echo "  nested skill link -> ~/.claude/skills/ours-stack"
+echo "  flat skill links  -> ~/.grok/skills/{bear-hours,source-scout,...}"
 echo "  state  -> $OURS_STACK_HOME"
 echo ""
 echo "Use: /bear-hours  /source-scout  /dense-read  /deep-research  /layout-html  /mind-map  /memory-palace  /infographic  /council  /dialogue  /study-status"

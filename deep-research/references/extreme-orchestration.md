@@ -16,6 +16,7 @@ research/<slug>/
 │   └── merge-log.md                # dedup stats
 ├── screening/
 │   └── batch-01.md … batch-10.md   # optional parallel screen shards
+├── notes.md                        # incremental read notes (orchestrator)
 ├── sources-index.md                # merged canonical index
 └── report.md
 ```
@@ -44,7 +45,7 @@ Write `discovery/plan.md` with one line per agent: `Agent NN — <cluster> — s
 
 ### 2. Launch 20 discovery sub-agents (single parallel batch)
 
-Use the **`Task`** tool — **one message, 20 calls**, `subagent_type: generalPurpose`, `model: composer-2.5-fast`.
+Launch **20 sub-agents in one parallel batch** via your environment's sub-agent/task mechanism (e.g. `Task`, parallel agent workers). Choose the **fastest/most economical model** available for discovery — this step is search-heavy, not reasoning-heavy.
 
 **Per-agent target:** **~100 unique candidates** logged to `research/<slug>/discovery/shard-NN.md`.
 
@@ -91,7 +92,7 @@ Orchestrator (parent agent):
 
 ### 4. Parallel screening (recommended)
 
-Launch **up to 10 screening sub-agents** in one parallel batch.
+Launch **up to 10 screening sub-agents** in one parallel batch (same sub-agent mechanism as discovery).
 
 Each processes a slice of `pending` rows (~200 per agent):
 
@@ -108,11 +109,11 @@ Orchestrator merges screen results back into `sources-index.md`.
 
 Parent agent ranks eligible pool; promote **40–60** to `read`.
 
-Do **not** spawn sub-agents for full-text read — parent reads top picks sequentially or in small batches to control token burn.
+Do **not** spawn sub-agents for full-text read — parent reads top picks sequentially or in small batches to control token burn. Append notes to `notes.md` per source. On read failure → `read-failed`, promote next eligible.
 
 ### 6. Report
 
-Same template as other modes. Funnel table must show **actual** counts. Add section:
+Same template as other modes. Funnel table must show **actual** counts; cited ≤ read. Write in the **user's language**. Add section:
 
 ```markdown
 ## Extreme run metadata
@@ -131,6 +132,7 @@ Same template as other modes. Funnel table must show **actual** counts. Add sect
 | User says | Action |
 |-----------|--------|
 | `stop` / `arrête` | Halt new sub-agents; merge what exists; report partial funnel |
+| `resume` | Continue from first `pending` or incomplete read in existing index |
 | `skip screening` | Merge discovery only; screen top 200 by title heuristics |
 | `downgrade` | Stop extreme; continue as `literature-review` on current index |
 
@@ -140,5 +142,5 @@ Same template as other modes. Funnel table must show **actual** counts. Add sect
 - [ ] 20 shard files attempted (note failures per shard)
 - [ ] `merge-log.md` exists with dedup stats
 - [ ] `sources-index.md` reflects merged reality — not inflated counts
-- [ ] 40–60 deep-reads OR documented capacity shortfall
+- [ ] 40–60 deep-reads OR documented capacity shortfall; cited ≤ read
 - [ ] Report cites only deep-read sources

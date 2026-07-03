@@ -9,13 +9,14 @@ Inspired by [gstack](https://github.com/garrytan/gstack), for learning instead o
 ## Install
 
 ```bash
-git clone https://github.com/loursCreatif/ours-stack.git ~/.claude/skills/ours-stack
-~/.claude/skills/ours-stack/setup
+git clone https://github.com/loursCreatif/ours-stack.git ours-stack
+cd ours-stack
+./setup
 ```
 
-Works in **Claude Code** and **Grok Build**. Run `./setup` once — it links skills to `~/.grok/skills/` (required for `/source-scout` in Grok).
+Run `./setup` once — it creates the local compatibility links used by supported skill runtimes.
 
-**Grok workspace:** open this repo (or any repo with `studies/`), not `/`. If `/source-scout` spins on Glob with 0 matches, run `./setup` and restart the session.
+**Workspace:** open this repo (or any repo with `studies/`), not `/`. If `/source-scout` cannot see local files, run `./setup` and restart the session.
 
 ## Use
 
@@ -69,7 +70,7 @@ Details: [AGENTS.md](AGENTS.md)
 
 ## Develop
 
-Clone anywhere, run `./setup` — it symlinks this repo to `~/.claude/skills/ours-stack`. Edit a `*/SKILL.md`, test in your agent, commit.
+Clone anywhere, run `./setup` — it creates the runtime compatibility symlinks. Edit a `*/SKILL.md`, test in your agent, commit.
 
 Add a skill: copy a folder, write `SKILL.md`, add one line to `AGENTS.md` and this README.
 
