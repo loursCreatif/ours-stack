@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Memory Palace Manifest (relief map)",
+  "type": "object",
+  "required": [
+    "slug", "title", "created", "theme", "lang", "view_mode",
+    "source_files", "path", "loci", "concepts"
+  ],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "created": { "type": "string", "format": "date" },
+    "theme": { "type": "string", "enum": ["corridor", "museum", "construction", "library", "custom"] },
+    "theme_notes": { "type": "string" },
+    "view_mode": { "type": "string", "enum": ["relief"] },
+    "levels": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["site", "interior"] },
+      "default": ["site", "interior"]
+    },
+    "lang": { "type": "string", "enum": ["fr", "en"] },
+    "wedge": { "type": "string" },
+    "source_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "path": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "loci": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/locus" },
+      "minItems": 1
+    },
+    "concepts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/concept" },
+      "minItems": 1
+    }
+  },
+  "definitions": {
+    "concept": {
+      "type": "object",
+      "required": ["id", "label", "gloss", "type", "importance", "source"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "gloss": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["mechanism", "finding", "belief", "question", "date", "relationship", "source"]
+        },
+        "importance": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "source": {
+          "type": "object",
+          "required": ["file", "section"],
+          "properties": {
+            "file": { "type": "string" },
+            "section": { "type": "string" },
+            "anchor": { "type": "string" }
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["to", "kind"],
+            "properties": {
+              "to": { "type": "string" },
+              "kind": { "type": "string", "enum": ["supports", "contradicts", "extends"] }
+            }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "zone": {
+      "type": "object",
+      "required": ["id", "label", "footprint", "concepts"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "footprint": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "concepts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "hotspot": {
+      "type": "object",
+      "required": ["id", "label", "concept", "at"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "concept": { "type": "string" },
+        "at": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "interior": {
+      "type": "object",
+      "properties": {
+        "zones": { "type": "array", "items": { "$ref": "#/definitions/zone" } },
+        "hotspots": { "type": "array", "items": { "$ref": "#/definitions/hotspot" } }
+      }
+    },
+    "locus": {
+      "type": "object",
+      "required": ["id", "kind", "level", "label", "footprint", "concepts"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["building", "door"]
+        },
+        "level": { "type": "string", "enum": ["site"] },
+        "label": { "type": "string" },
+        "footprint": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "[x, z, width, depth] on site map"
+        },
+        "elevation": { "type": "number", "default": 0 },
+        "height": { "type": "number", "default": 3 },
+        "concepts": { "type": "array", "items": { "type": "string" } },
+        "interior": { "$ref": "#/definitions/interior" },
+        "blocked": { "type": "boolean", "description": "Open question — dashed building" },
+        "scene": {
+          "type": "object",
+          "description": "Optional mental scene (method of loci)",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1,
+              "description": "1–2 sentences — vivid exaggerated mental image encoding the concept"
+            },
+            "senses": {
+              "type": "array",
+              "items": { "type": "string" },
+              "minItems": 2,
+              "maxItems": 3,
+              "description": "Sensory hooks prefixed: Son —, Odeur —, Texture —, etc."
+            }
+          },
+          "required": ["image", "senses"]
+        }
+      }
+    }
+  }
+}

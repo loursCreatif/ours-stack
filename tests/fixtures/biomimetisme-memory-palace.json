@@ -1,0 +1,281 @@
+{
+  "slug": "biomimetisme-locomotion-chantier",
+  "title": "Biomimétisme — locomotion sur terrain de chantier",
+  "created": "2026-07-01",
+  "theme": "construction",
+  "view_mode": "relief",
+  "levels": ["site", "interior"],
+  "lang": "fr",
+  "wedge": "Principes de locomotion à pattes multi-articulées pour sol de chantier instable",
+  "source_files": ["studies/biomimetisme-locomotion-chantier/brief.md"],
+  "path": ["entree", "terrain", "mecanismes", "robots", "croyances", "preuve", "questions"],
+  "concepts": [
+    {
+      "id": "c-wedge",
+      "label": "Narrow wedge",
+      "gloss": "Pattes multi-articulées inspirées insectes/arthropodes — traverser un sol de chantier instable.",
+      "type": "finding",
+      "importance": 5,
+      "source": { "file": "brief.md", "section": "Narrow wedge" }
+    },
+    {
+      "id": "c-why",
+      "label": "Pourquoi maintenant",
+      "gloss": "Terrain irrégulier — gravats, pentes, obstacles — les roues classiques échouent.",
+      "type": "finding",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Why now" }
+    },
+    {
+      "id": "c-legs-vs-wheels",
+      "label": "Pattes > roues",
+      "gloss": "Sur terrain irrégulier, les pattes battent les roues — contact sélectif, redondance.",
+      "type": "mechanism",
+      "importance": 5,
+      "source": { "file": "brief.md", "section": "Dans le scope" }
+    },
+    {
+      "id": "c-tripod",
+      "label": "Tripod gait",
+      "gloss": "Trois pattes au sol en permanence → stabilité statique sur hexapode.",
+      "type": "mechanism",
+      "importance": 5,
+      "source": { "file": "brief.md", "section": "Source material" }
+    },
+    {
+      "id": "c-stability",
+      "label": "Stabilité statique vs dynamique",
+      "gloss": "Nombre de pattes, cinématique, stabilité — mécanismes clés à retenir.",
+      "type": "mechanism",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Dans le scope" }
+    },
+    {
+      "id": "c-rhex",
+      "label": "RHex",
+      "gloss": "Robot pattes terrain irrégulier — preuve terrain (UPenn, guides).",
+      "type": "finding",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Source material" }
+    },
+    {
+      "id": "c-trhex",
+      "label": "T-RHex pentes",
+      "gloss": "Variante pour pentes / contextes type chantier (arxiv 1906.04811).",
+      "type": "finding",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Source material" }
+    },
+    {
+      "id": "c-belief-copy",
+      "label": "Copier la nature",
+      "gloss": "Croyance : la forme suit la fonction — copier la morphologie suffit ?",
+      "type": "belief",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Current beliefs" }
+    },
+    {
+      "id": "c-belief-principles",
+      "label": "Principes vs copies",
+      "gloss": "À tester : extraire des principes transférables, pas des copies littérales.",
+      "type": "question",
+      "importance": 5,
+      "source": { "file": "brief.md", "section": "À tester" }
+    },
+    {
+      "id": "c-success",
+      "label": "Success criteria",
+      "gloss": "Expliquer 6 pattes > 4 roues ; citer 2–3 principes ; thread X.",
+      "type": "finding",
+      "importance": 4,
+      "source": { "file": "brief.md", "section": "Success criteria" }
+    },
+    {
+      "id": "c-proof",
+      "label": "Thread X",
+      "gloss": "Hook : 6 pattes pas 4 roues — ce que les insectes savent depuis 400M d'années.",
+      "type": "finding",
+      "importance": 3,
+      "source": { "file": "brief.md", "section": "Public proof plan" }
+    },
+    {
+      "id": "c-q-whegs",
+      "label": "Whegs vs hexapode",
+      "gloss": "Sweet spot maker : 1 moteur Whegs-like vs 6 moteurs RHex ?",
+      "type": "question",
+      "importance": 3,
+      "source": { "file": "brief.md", "section": "Open questions" }
+    }
+  ],
+  "loci": [
+    {
+      "id": "entree",
+      "kind": "building",
+      "level": "site",
+      "label": "Entrée chantier",
+      "footprint": [0, 0, 10, 8],
+      "height": 4,
+      "concepts": ["c-wedge", "c-why"],
+      "scene": {
+        "image": "Tu franchis le portail du chantier : un hexapode géant en acier jaune tente de grimper un tas de gravats pendant qu'un chariot à roues reste coincé, une roue dans le vide, le plateau qui bascule.",
+        "senses": [
+          "Son — le crissement métallique des pattes qui cherchent un appui sur les pierres",
+          "Odeur — poussière de béton chaud et diesel de la grue au loin",
+          "Mouvement — le sol qui cède sous chaque pas, comme du sable mouvant"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-wedge", "label": "Wedge", "footprint": [1, 1, 4, 3], "concepts": ["c-wedge"] },
+          { "id": "z-context", "label": "Contexte terrain", "footprint": [5, 1, 4, 3], "concepts": ["c-why"] }
+        ],
+        "hotspots": []
+      }
+    },
+    {
+      "id": "terrain",
+      "kind": "building",
+      "level": "site",
+      "label": "Zone terrain",
+      "footprint": [12, 0, 10, 8],
+      "height": 3.5,
+      "concepts": ["c-legs-vs-wheels"],
+      "scene": {
+        "image": "Un terrain de démolition en dents de scie : quatre roues patinent dans un trou tandis que six pattes posent leurs coussinets un par un sur les aspérités, comme un pianiste qui ne joue que les touches solides.",
+        "senses": [
+          "Son — le claquement sec quand une patte trouve du béton dur",
+          "Texture — gravats qui roulent sous la semelle, pierres anguleuses qui mordent",
+          "Température — chaleur radiante du béton exposé au soleil de midi"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-legs", "label": "Pattes vs roues", "footprint": [2, 2, 6, 4], "concepts": ["c-legs-vs-wheels"] }
+        ],
+        "hotspots": [
+          { "id": "hs-gravats", "label": "Gravats / pentes", "concept": "c-legs-vs-wheels", "at": [5, 0.5, 3] }
+        ]
+      }
+    },
+    {
+      "id": "mecanismes",
+      "kind": "building",
+      "level": "site",
+      "label": "Atelier mécanismes",
+      "footprint": [24, 0, 10, 8],
+      "height": 4,
+      "concepts": ["c-tripod", "c-stability"],
+      "scene": {
+        "image": "Dans l'atelier, un cafard mécanique alterne deux triangles de pattes : trois au sol en orange fluo pendant que trois autres se lèvent en l'air — le centre de masse reste prisonnier du triangle, impossible de basculer.",
+        "senses": [
+          "Son — tic-tac régulier des vérins qui alternent les tripodes",
+          "Mouvement — oscillation lente du corps qui ne tombe jamais, comme un trépied photo",
+          "Texture — huile de machine sur les joints, surfaces lisses et froides au toucher"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-tripod", "label": "Tripod gait", "footprint": [1, 1, 4, 3], "concepts": ["c-tripod"] },
+          { "id": "z-stab", "label": "Stabilité", "footprint": [5, 1, 4, 3], "concepts": ["c-stability"] }
+        ],
+        "hotspots": [
+          { "id": "hs-tripod", "label": "3 pattes au sol", "concept": "c-tripod", "at": [3, 0.5, 2.5] }
+        ]
+      }
+    },
+    {
+      "id": "robots",
+      "kind": "building",
+      "level": "site",
+      "label": "Hangar robots",
+      "footprint": [0, 10, 12, 8],
+      "height": 5,
+      "concepts": ["c-rhex", "c-trhex"],
+      "scene": {
+        "image": "Le hangar s'ouvre sur RHex qui galope sur des décombres comme un chien fou, et juste à côté T-RHex grimpe une pente de 30° en gardant son corps parallèle au sol, pattes avant en éventail.",
+        "senses": [
+          "Son — bourdonnement des six moteurs qui tournent en rafale",
+          "Odeur — caoutchouc chaud des semelles souples frottant le béton",
+          "Mouvement — vibration du sol qui se propage à chaque impact de patte"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-rhex", "label": "RHex", "footprint": [1, 1, 5, 3], "concepts": ["c-rhex"] },
+          { "id": "z-trhex", "label": "T-RHex", "footprint": [6, 1, 5, 3], "concepts": ["c-trhex"] }
+        ],
+        "hotspots": []
+      }
+    },
+    {
+      "id": "croyances",
+      "kind": "building",
+      "level": "site",
+      "label": "Bureau croyances",
+      "footprint": [14, 10, 10, 8],
+      "height": 3.5,
+      "concepts": ["c-belief-copy", "c-belief-principles"],
+      "scene": {
+        "image": "Au bureau, une vitrine présente un cafard naturalisé à côté d'un robot identique en aluminium — la vitre se fissure : copier la forme ne suffit pas, il faut voler l'idée du tripode, pas les antennes.",
+        "senses": [
+          "Son — silence de bureau, horloge qui tic-tac",
+          "Odeur — papier vieux et café froid sur le bureau",
+          "Texture — verre fissuré sous les doigts, métal froid de la réplique"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-copy", "label": "Copier la nature", "footprint": [1, 1, 4, 3], "concepts": ["c-belief-copy"] },
+          { "id": "z-princ", "label": "Principes", "footprint": [5, 1, 4, 3], "concepts": ["c-belief-principles"] }
+        ],
+        "hotspots": []
+      }
+    },
+    {
+      "id": "preuve",
+      "kind": "building",
+      "level": "site",
+      "label": "Trailer preuve",
+      "footprint": [26, 10, 8, 8],
+      "height": 3,
+      "concepts": ["c-success", "c-proof"],
+      "scene": {
+        "image": "Dans la caravane de tournage, un écran affiche un thread X viral : « 6 pattes, pas 4 roues — ce que les insectes savent depuis 400 millions d'années » avec une vidéo du robot qui franchit les gravats en accéléré.",
+        "senses": [
+          "Son — notification ping qui s'enchaîne, applaudissements enregistrés",
+          "Mouvement — curseur qui défile les réponses enthousiastes",
+          "Texture — plastique chaud du laptop sur les genoux"
+        ]
+      },
+      "interior": {
+        "zones": [
+          { "id": "z-criteria", "label": "Critères", "footprint": [1, 1, 3, 3], "concepts": ["c-success"] },
+          { "id": "z-thread", "label": "Thread X", "footprint": [4, 1, 3, 3], "concepts": ["c-proof"] }
+        ],
+        "hotspots": []
+      }
+    },
+    {
+      "id": "questions",
+      "kind": "building",
+      "level": "site",
+      "label": "Questions ouvertes",
+      "footprint": [36, 4, 6, 6],
+      "height": 2.5,
+      "blocked": true,
+      "concepts": ["c-q-whegs"],
+      "scene": {
+        "image": "Un bâtiment en échafaudage gris et barré : à l'intérieur, un Whegs à trois branches et un hexapode à six moteurs se battent au sumo sur une balance — laquelle pèse le bon compromis maker ?",
+        "senses": [
+          "Son — grincement des échafaudages au vent",
+          "Odeur — peinture fraîche et résine époxy",
+          "Mouvement — la balance qui oscille sans jamais pencher d'un côté"
+        ]
+      },
+      "interior": {
+        "zones": [],
+        "hotspots": []
+      }
+    }
+  ]
+}
