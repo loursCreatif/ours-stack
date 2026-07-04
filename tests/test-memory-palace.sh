@@ -496,7 +496,7 @@ echo "EXISTING_BASELINE: $EXISTING_PASSES tests passed before immersion checks"
 # --- Immersion: structural tokens in compose source ---
 [ -x "$MATERIALIZE" ] || fail "materialize script not executable"
 grep -q 'biomimetisme-memory-palace.json' "$MATERIALIZE" || fail "materialize script must reference canonical fixture"
-for token in 'Visite guidée' 'btn-tour' 'tour-nav' 'scene-block' 'scene.image' 'startTour' 'endTour' 'computeTourPose' 'makeSkyTexture' 'foliageAnim' 'iso-tree' 'skyGrad'; do
+for token in 'Visite guidée' 'btn-tour' 'tour-nav' 'scene-block' 'scene.image' 'startTour' 'endTour' 'computeTourPose' 'buildingBBoxCorners' 'getTourFramingMetrics' 'setPathSpritesVisible' 'buildingColors' 'makeSkyTexture' 'foliageAnim' 'iso-tree' 'skyGrad'; do
   if ! grep -q "$token" "$COMPOSE"; then
     fail "missing immersion token in compose: $token"
   fi
@@ -644,6 +644,7 @@ async function run3d() {
       tourActive: m.tourActive,
       cameraY: m.cameraY,
       tourStop: m.tourStop,
+      tourFraming: m.tourFraming,
       panelOpen: !panel.hidden,
       sceneText: sceneImg?.textContent || "",
       btnMapVisible: !document.getElementById("btn-map-view").hidden
@@ -707,6 +708,11 @@ if (!r2d.tourNavVisible) process.exit(11);
 if (!r2d.panelOpen || !r2d.sceneText) process.exit(12);
 if (!r2d.hasHighlight) process.exit(13);
 if (!r2d.hasSkyGrad) process.exit(14);
+const fr = r3d.afterStart.tourFraming;
+if (!fr) process.exit(16);
+if (!fr.allCornersInView) process.exit(17);
+if (fr.projectedHeightRatio < 0.35 || fr.projectedHeightRatio > 0.65) process.exit(18);
+if (!fr.pathSpritesHidden) process.exit(19);
 MJS
   {
     echo "=== Immersion guided tour ==="
@@ -737,10 +743,92 @@ assert report['r3d']['afterEsc']['cameraY'] > r['cameraY']
 assert report['r2d']['hasHighlight']
 mid = report['r3d']['midDescent']
 before_y = report['r3d']['before']['cameraY']
+fr = report['r3d']['afterStart'].get('tourFraming') or report['r3d']['afterStart']['m'].get('tourFraming')
+assert fr, 'tourFraming metrics missing'
+assert fr.get('allCornersInView'), fr
+assert 0.35 <= fr.get('projectedHeightRatio', 0) <= 0.65, fr
+assert fr.get('pathSpritesHidden'), fr
 assert mid > 3 and mid < before_y - 5, f'tour must ease mid-descent, got mid={mid} before={before_y}'
 " || fail "immersion-tour.log assertions failed"
   ok "immersion Playwright: guided tour eye-level, scene panel, escape restore, iso parity"
   ok "immersion screenshots captured (carte, stop1, iso-visite)"
+  ok "visual framing: tour stop bbox in view, height ratio 0.35-0.65, badges hidden"
+
+  if [ ! -d "$SCRATCH/node_modules/pngjs" ]; then
+    (cd "$SCRATCH" && npm install pngjs@7.0.0 >/dev/null 2>&1)
+  fi
+  cat >"$SCRATCH/analyze-visual-png.mjs" <<'MJS'
+import { readFileSync, writeFileSync } from "fs";
+import { PNG } from "pngjs";
+
+const [stop1Path, cartePath, framingLog, paletteLog] = process.argv.slice(2);
+
+function luminance(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function loadRgb(path) {
+  const png = PNG.sync.read(readFileSync(path));
+  const pixels = [];
+  for (let i = 0; i < png.data.length; i += 4) {
+    pixels.push([png.data[i], png.data[i + 1], png.data[i + 2]]);
+  }
+  return { w: png.width, h: png.height, pixels };
+}
+
+function pixelVariance(path) {
+  const { pixels } = loadRgb(path);
+  const lums = pixels.map(([r, g, b]) => luminance(r, g, b));
+  const mean = lums.reduce((a, b) => a + b, 0) / lums.length;
+  return lums.reduce((a, v) => a + (v - mean) ** 2, 0) / lums.length;
+}
+
+function analyzePalette(path) {
+  const { w, h, pixels } = loadRgb(path);
+  const building = [];
+  const hueBins = new Set();
+  for (let y = Math.floor(h * 0.12); y < Math.floor(h * 0.92); y++) {
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] = pixels[y * w + x];
+      const lum = luminance(r, g, b);
+      const sat = Math.max(r, g, b) - Math.min(r, g, b);
+      if (lum > 215 && sat < 28) continue;
+      if (lum < 95) continue;
+      building.push(lum);
+      hueBins.add(`${Math.floor(r / 40)},${Math.floor(g / 40)},${Math.floor(b / 40)}`);
+    }
+  }
+  const meanLum = building.length ? building.reduce((a, b) => a + b, 0) / building.length : 0;
+  return { meanLum, hues: hueBins.size, count: building.length };
+}
+
+const varStop = pixelVariance(stop1Path);
+writeFileSync(framingLog, JSON.stringify({
+  screenshot: stop1Path,
+  pixelVariance: varStop,
+  minVariance: 500
+}, null, 2));
+if (varStop < 500) process.exit(21);
+
+const pal = analyzePalette(cartePath);
+writeFileSync(paletteLog, JSON.stringify({
+  screenshot: cartePath,
+  meanBuildingLuminance: pal.meanLum,
+  distinctHueBins: pal.hues,
+  samplePixels: pal.count,
+  minMeanLuminance: 140,
+  minDistinctHues: 4
+}, null, 2));
+if (pal.count <= 1000) process.exit(22);
+if (pal.meanLum <= 140) process.exit(23);
+if (pal.hues < 4) process.exit(24);
+MJS
+  (cd "$SCRATCH" && node analyze-visual-png.mjs \
+    "$SCRATCH/screenshot-visite-stop1.png" \
+    "$SCRATCH/screenshot-carte.png" \
+    "$SCRATCH/visual-framing.log" \
+    "$SCRATCH/visual-palette.log") || fail "visual palette/framing PNG analysis failed"
+  ok "visual palette: carte buildings luminous (>140) with >=4 distinct hues"
 else
   echo "playwright unavailable — immersion runtime skipped" >"$IMMERSION_LOG"
   ok "immersion structural only (playwright unavailable)"
@@ -765,16 +853,17 @@ ok "goal-closure emitted (tracked section clean, FINAL_RESPONSE.md ready)"
 
 IMMERSION_PASSES=$((pass - EXISTING_PASSES))
 [ "$EXISTING_PASSES" -eq 17 ] || fail "expected 17 existing baseline passes, got $EXISTING_PASSES"
-[ "$IMMERSION_PASSES" -eq 8 ] || fail "expected 8 immersion passes, got $IMMERSION_PASSES"
+[ "$IMMERSION_PASSES" -eq 10 ] || fail "expected 10 immersion passes, got $IMMERSION_PASSES"
 echo "EXISTING_TESTS: $EXISTING_PASSES passed (regression baseline)"
 echo "IMMERSION_TESTS: $IMMERSION_PASSES passed"
 echo "STUDY_CONTRACT: canonical=tests/fixtures/biomimetisme-memory-palace.json materialize=memory-palace/scripts/materialize-biomimetisme-study.sh target=gitignored-study-dir (runtime only, not in CHANGED_FILES)"
 echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES immersion, study-evidence in scratch)"
 {
   echo "verification_plan_step1: memory-palace-tests.log zero FAIL"
-  echo "verification_plan_step2: immersion-tour.log midDescent easing + screenshots"
+  echo "verification_plan_step2: immersion-tour.log midDescent easing + visual-framing.log"
   echo "verification_plan_step3: study-evidence.json scene_count=7 fixture_sha=study_json_sha"
   echo "verification_plan_step4: screenshot-carte.png screenshot-visite-stop1.png screenshot-iso-visite.png"
+  echo "verification_plan_palette: visual-palette.log mean_lum>140 hues>=4"
   echo "changed_files_tracked: $SCRATCH/changed-files-tracked.txt"
   echo "goal_closure: $SCRATCH/goal-closure.md"
   echo "final_response_paste: $SCRATCH/final-response-paste.md"

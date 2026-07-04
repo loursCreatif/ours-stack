@@ -32,8 +32,8 @@ SCENE_JS = r"""
       sky: 0xf7f4ef, path: 0x8b6914, ribbon: 0x3b82f6, detail: 0xd4af37, edge: 0x9a8b78
     },
     construction: {
-      ground: 0xe8dcc8, building: 0xf2e8d8, roof: 0xd4a574, zone: 0xf5e6c8, pin: 0xb45309,
-      sky: 0xf0ead6, path: 0xc87941, ribbon: 0x2563eb, detail: 0x9a7b4f, edge: 0x8a7a60
+      ground: 0xf6f1e8, building: 0xfaf6ee, roof: 0xe8c8a8, zone: 0xf5ebe0, pin: 0xc87840,
+      sky: 0xf8f2e8, path: 0xd4a878, ribbon: 0x3b82f6, detail: 0xc4a878, edge: 0xb8a898
     },
     library: {
       ground: 0xd8cfc0, building: 0xe8e0d0, roof: 0x5a6b4a, zone: 0xf0e8e4, pin: 0x8b2942,
@@ -45,6 +45,16 @@ SCENE_JS = r"""
     }
   };
   const pal = THEME[data.theme] || THEME.corridor;
+
+  const BUILDING_PALETTES = [
+    { wall: 0xfcfaf5, roof: 0xf0d4b0 },
+    { wall: 0xfaf5ec, roof: 0xe8c8a0 },
+    { wall: 0xf8f4ee, roof: 0xddb888 },
+    { wall: 0xf2f6f0, roof: 0xc0d8b8 }
+  ];
+  function buildingColors(stepIdx) {
+    return BUILDING_PALETTES[stepIdx % BUILDING_PALETTES.length];
+  }
 
   function hexColor(n) {
     return '#' + (n >>> 0).toString(16).padStart(6, '0');
@@ -373,8 +383,9 @@ SCENE_JS = r"""
         [isoX(fx, fz + fd), isoY(fx, fz + fd)]
       ];
       const h = buildingHeight(loc, idx) * 6;
-      const fill = loc.blocked ? '#9a9a9a' : hexColor(pal.building);
-      const roofFill = loc.blocked ? '#7a7a7a' : hexColor(pal.roof);
+      const bcol = buildingColors(idx);
+      const fill = loc.blocked ? '#bbbbbb' : hexColor(bcol.wall);
+      const roofFill = loc.blocked ? '#aaaaaa' : hexColor(bcol.roof);
       const dash = loc.blocked ? ' stroke-dasharray="6 4"' : '';
       const variant = roofVariant(idx, loc);
       const isTourHighlight = tourActive && tourHighlightId === id;
@@ -593,8 +604,9 @@ SCENE_JS = r"""
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    scene.add(new THREE.AmbientLight(0xfff5e8, 0.5));
-    const sun = new THREE.DirectionalLight(0xffd9a0, 1.05);
+    scene.add(new THREE.AmbientLight(0xfff8f0, 0.62));
+    scene.add(new THREE.HemisphereLight(0xfff5e8, 0xf0e8d8, 0.38));
+    const sun = new THREE.DirectionalLight(0xffe8b8, 0.92);
     sun.position.set(58, 9, 32);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
@@ -606,7 +618,8 @@ SCENE_JS = r"""
     sun.shadow.camera.right = sh;
     sun.shadow.camera.top = sh;
     sun.shadow.camera.bottom = -sh;
-    sun.shadow.bias = -0.0008;
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
     scene.add(sun);
 
     function makeGroundTexture() {
@@ -615,8 +628,8 @@ SCENE_JS = r"""
       const ctx = c.getContext('2d');
       ctx.fillStyle = hexColor(pal.ground);
       ctx.fillRect(0, 0, 256, 256);
-      for (let i = 0; i < 600; i++) {
-        ctx.fillStyle = 'rgba(60,40,20,' + (Math.random() * 0.06) + ')';
+      for (let i = 0; i < 320; i++) {
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.015 + Math.random() * 0.025) + ')';
         ctx.fillRect(Math.random() * 256, Math.random() * 256, 1, 1);
       }
       const tex = new THREE.CanvasTexture(c);
@@ -624,15 +637,15 @@ SCENE_JS = r"""
       tex.repeat.set(6, 6);
       return tex;
     }
-    function makeWallTexture() {
+    function makeWallTexture(baseHex) {
       const c = document.createElement('canvas');
       c.width = 128; c.height = 128;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = hexColor(pal.building);
+      ctx.fillStyle = hexColor(baseHex);
       ctx.fillRect(0, 0, 128, 128);
-      ctx.strokeStyle = 'rgba(80,60,40,0.12)';
+      ctx.strokeStyle = 'rgba(0,0,0,0.03)';
       ctx.lineWidth = 1;
-      for (let y = 0; y < 128; y += 12) {
+      for (let y = 0; y < 128; y += 14) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(128, y); ctx.stroke();
       }
       const tex = new THREE.CanvasTexture(c);
@@ -653,7 +666,11 @@ SCENE_JS = r"""
     scene.add(ground);
 
     const foliageAnim = [];
-    const wallTex = makeWallTexture();
+    const wallTexCache = {};
+    function wallTexFor(hex) {
+      if (!wallTexCache[hex]) wallTexCache[hex] = makeWallTexture(hex);
+      return wallTexCache[hex];
+    }
     data.path.forEach((id, idx) => {
       const loc = locusById[id];
       if (!loc) return;
@@ -750,10 +767,22 @@ SCENE_JS = r"""
 
     function updateLabelVisibility() {
       labelEntries.forEach(entry => {
-        const show = navLevel === 'site'
-          ? entry.scope === 'site'
-          : entry.scope === 'interior' && entry.buildingId === activeBuildingId;
+        let show = false;
+        if (tourActive || tourMode3d) {
+          show = false;
+        } else if (navLevel === 'site') {
+          show = entry.scope === 'site';
+        } else {
+          show = entry.scope === 'interior' && entry.buildingId === activeBuildingId;
+        }
         entry.el.style.display = show ? 'block' : 'none';
+      });
+    }
+
+    function setPathSpritesVisible(visible) {
+      if (!pathGroup) return;
+      pathGroup.children.forEach(o => {
+        if (o.isSprite) o.visible = visible;
       });
     }
 
@@ -851,9 +880,9 @@ SCENE_JS = r"""
       const g = new THREE.Group();
       g.position.set(fx + fw / 2, 0, fz + fd / 2);
 
+      const bcol = buildingColors(stepIdx);
       const bodyMat = new THREE.MeshLambertMaterial({
-        color: loc.blocked ? 0x999999 : pal.building,
-        map: loc.blocked ? null : wallTex,
+        color: loc.blocked ? 0xcccccc : bcol.wall,
         emissive: 0x000000
       });
       const body = shadowMesh(new THREE.Mesh(new THREE.BoxGeometry(fw, h, fd), bodyMat));
@@ -862,7 +891,7 @@ SCENE_JS = r"""
       g.add(body);
       const bodyEdges = addEdges(body);
 
-      const roofMat = new THREE.MeshLambertMaterial({ color: loc.blocked ? 0x888888 : pal.roof });
+      const roofMat = new THREE.MeshLambertMaterial({ color: loc.blocked ? 0xaaaaaa : bcol.roof });
       const roof = addRoof(g, fw, fd, h, variant, roofMat, loc);
       roof.userData = { kind: 'building', id: loc.id };
 
@@ -974,6 +1003,48 @@ SCENE_JS = r"""
     let tourTween = null;
     let tourMode3d = false;
 
+    function buildingBBoxCorners(loc, stopIdx) {
+      const [fx, fz, fw, fd] = loc.footprint;
+      const h = buildingHeight(loc, stopIdx);
+      const corners = [];
+      [[fx, fz], [fx + fw, fz], [fx + fw, fz + fd], [fx, fz + fd]].forEach(([x, z]) => {
+        corners.push(new THREE.Vector3(x, 0, z));
+        corners.push(new THREE.Vector3(x, h, z));
+      });
+      return corners;
+    }
+
+    function measureFramingAtPose(pos, look, corners) {
+      const savedPos = camera.position.clone();
+      const savedTarget = { x: camTarget.x, y: camTarget.y, z: camTarget.z };
+      camera.position.copy(pos);
+      camera.lookAt(look);
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      let minNx = 1, maxNx = 0, minNy = 1, maxNy = 0;
+      let allIn = true;
+      for (const p of corners) {
+        tmpProj.copy(p);
+        tmpProj.project(camera);
+        if (tmpProj.z > 1) { allIn = false; continue; }
+        const nx = (tmpProj.x + 1) / 2;
+        const ny = (-tmpProj.y + 1) / 2;
+        if (nx < 0 || nx > 1 || ny < 0 || ny > 1) allIn = false;
+        minNx = Math.min(minNx, nx);
+        maxNx = Math.max(maxNx, nx);
+        minNy = Math.min(minNy, ny);
+        maxNy = Math.max(maxNy, ny);
+      }
+      camera.position.copy(savedPos);
+      camera.lookAt(savedTarget.x, savedTarget.y, savedTarget.z);
+      camera.updateMatrixWorld();
+      return {
+        allCornersInView: allIn,
+        projectedHeightRatio: maxNy - minNy,
+        minNx, maxNx, minNy, maxNy
+      };
+    }
+
     function computeTourPose(stopIdx) {
       const id = data.path[stopIdx];
       const loc = locusById[id];
@@ -982,11 +1053,50 @@ SCENE_JS = r"""
       const h = buildingHeight(loc, stopIdx);
       const cx = fx + fw / 2;
       const cz = fz + fd / 2;
-      const standoff = Math.max(fw, fd) * 0.9 + 2.5;
-      return {
-        pos: new THREE.Vector3(cx, EYE_HEIGHT, cz + fd / 2 + standoff),
-        look: new THREE.Vector3(cx, h * 0.45, cz)
+      const corners = buildingBBoxCorners(loc, stopIdx);
+      const look = new THREE.Vector3(cx, h * 0.48, cz);
+      const span = Math.max(fw, fd);
+      const minStand = span * 0.55 + 2.2;
+      const maxStand = span * 3.2 + 10;
+      const candidates = [];
+      for (let stand = minStand; stand <= maxStand; stand += 0.25) {
+        const pos = new THREE.Vector3(cx, EYE_HEIGHT, cz + fd / 2 + stand);
+        const m = measureFramingAtPose(pos, look, corners);
+        if (m.allCornersInView) candidates.push({ pos: pos.clone(), look: look.clone(), m });
+      }
+      const inBand = candidates.filter(c =>
+        c.m.projectedHeightRatio >= 0.35 && c.m.projectedHeightRatio <= 0.65
+      );
+      const pick = (list) => {
+        list.sort((a, b) =>
+          Math.abs(a.m.projectedHeightRatio - 0.5) - Math.abs(b.m.projectedHeightRatio - 0.5)
+        );
+        return { pos: list[0].pos, look: list[0].look };
       };
+      if (inBand.length) return pick(inBand);
+      if (candidates.length) return pick(candidates);
+      return {
+        pos: new THREE.Vector3(cx, EYE_HEIGHT, cz + fd / 2 + maxStand),
+        look
+      };
+    }
+
+    function getTourFramingMetrics(stopIdx) {
+      const id = data.path[stopIdx];
+      const loc = locusById[id];
+      if (!loc) return null;
+      const corners = buildingBBoxCorners(loc, stopIdx);
+      const look = new THREE.Vector3(camTarget.x, camTarget.y, camTarget.z);
+      const framing = measureFramingAtPose(camera.position, look, corners);
+      let visibleSprites = 0;
+      if (pathGroup) {
+        pathGroup.children.forEach(o => {
+          if (o.isSprite && o.visible) visibleSprites++;
+        });
+      }
+      framing.pathSpritesVisible = visibleSprites;
+      framing.pathSpritesHidden = visibleSprites === 0;
+      return framing;
     }
 
     function setTourHighlight(bid) {
@@ -1028,6 +1138,7 @@ SCENE_JS = r"""
       Object.values(buildingGroups).forEach(g => { g.visible = true; });
       Object.values(interiorGroups).forEach(g => { g.visible = false; });
       if (pathGroup) pathGroup.visible = true;
+      setPathSpritesVisible(false);
       updateLabelVisibility();
       canvas.style.cursor = 'default';
     }
@@ -1036,9 +1147,11 @@ SCENE_JS = r"""
       tourMode3d = false;
       tourTween = null;
       setTourHighlight(null);
+      setPathSpritesVisible(true);
       navLevel = 'site';
       fitSiteCamera();
       placeCamera();
+      updateLabelVisibility();
     }
 
     reliefTourApi = {
@@ -1301,7 +1414,8 @@ SCENE_JS = r"""
         tourActive: tourActive,
         tourStop: tourStopIdx,
         cameraY: camera.position.y,
-        tourMode3d: tourMode3d
+        tourMode3d: tourMode3d,
+        tourFraming: (tourActive && tourMode3d) ? getTourFramingMetrics(tourStopIdx) : null
       };
     };
 

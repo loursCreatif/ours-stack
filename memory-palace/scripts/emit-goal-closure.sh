@@ -17,7 +17,7 @@ cat >"$OUT" <<'EOF'
 - `memory-palace/scripts/emit-goal-closure.sh` — texte de clôture harness (section trackée sans artefact gitignoré)
 - `memory-palace/scripts/fetch-three.sh` — fetch Three.js vendored
 - `tests/fixtures/biomimetisme-memory-palace.json` — source canonique des 7 scènes mentales
-- `tests/test-memory-palace.sh` — 17 régression + 8 immersion + goal-closure gate
+- `tests/test-memory-palace.sh` — 17 régression + 10 immersion (cadrage + palette) + goal-closure gate
 - `memory-palace/SKILL.md`
 - `memory-palace/references/palace-schema.json`
 - `memory-palace/references/navigation-ux.md`
