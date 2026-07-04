@@ -752,20 +752,23 @@ bash "$EMIT_CLOSURE" "$SCRATCH"
 [ -s "$SCRATCH/goal-closure.md" ] || fail "goal-closure.md missing"
 [ -s "$SCRATCH/changed-files-tracked.txt" ] || fail "changed-files-tracked.txt missing"
 [ -s "$SCRATCH/final-response-paste.md" ] || fail "final-response-paste.md missing"
-if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/goal-closure.md" | grep -qE '(^|- )`?studies/'; then
-  fail "goal-closure tracked section must not list studies/ paths"
+[ -s "$SCRATCH/FINAL_RESPONSE.md" ] || fail "FINAL_RESPONSE.md missing"
+if ! cmp -s "$SCRATCH/goal-closure.md" "$SCRATCH/final-response-paste.md"; then
+  fail "final-response-paste.md must equal goal-closure.md"
 fi
-if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/final-response-paste.md" | grep -qE '(^|- )`?studies/'; then
-  fail "final-response-paste tracked section must not list studies/ paths"
-fi
-ok "goal-closure emitted (tracked section clean, paste artifact ready)"
+for closure_artifact in goal-closure.md final-response-paste.md FINAL_RESPONSE.md; do
+  if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/$closure_artifact" | grep -qE '(^|- )`?studies/'; then
+    fail "$closure_artifact tracked section must not list studies/ paths"
+  fi
+done
+ok "goal-closure emitted (tracked section clean, FINAL_RESPONSE.md ready)"
 
 IMMERSION_PASSES=$((pass - EXISTING_PASSES))
 [ "$EXISTING_PASSES" -eq 17 ] || fail "expected 17 existing baseline passes, got $EXISTING_PASSES"
 [ "$IMMERSION_PASSES" -eq 8 ] || fail "expected 8 immersion passes, got $IMMERSION_PASSES"
 echo "EXISTING_TESTS: $EXISTING_PASSES passed (regression baseline)"
 echo "IMMERSION_TESTS: $IMMERSION_PASSES passed"
-echo "STUDY_CONTRACT: canonical=tests/fixtures/biomimetisme-memory-palace.json materialize=memory-palace/scripts/materialize-biomimetisme-study.sh target=studies/biomimetisme-locomotion-chantier/ (gitignored, runtime only)"
+echo "STUDY_CONTRACT: canonical=tests/fixtures/biomimetisme-memory-palace.json materialize=memory-palace/scripts/materialize-biomimetisme-study.sh target=gitignored-study-dir (runtime only, not in CHANGED_FILES)"
 echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES immersion, study-evidence in scratch)"
 {
   echo "verification_plan_step1: memory-palace-tests.log zero FAIL"
@@ -775,6 +778,7 @@ echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES
   echo "changed_files_tracked: $SCRATCH/changed-files-tracked.txt"
   echo "goal_closure: $SCRATCH/goal-closure.md"
   echo "final_response_paste: $SCRATCH/final-response-paste.md"
+  echo "final_response_md: $SCRATCH/FINAL_RESPONSE.md"
   echo "study_criterion: satisfied via fixture+materialize (scratch study-evidence.json), not in CHANGED_FILES"
 } >"$SCRATCH/verification-summary.txt"
 exit 0

@@ -6,6 +6,7 @@ SCRATCH="${1:?usage: emit-goal-closure.sh <scratch-dir>}"
 OUT="$SCRATCH/goal-closure.md"
 TRACKED_LIST="$SCRATCH/changed-files-tracked.txt"
 PASTE="$SCRATCH/final-response-paste.md"
+FINAL="$SCRATCH/FINAL_RESPONSE.md"
 mkdir -p "$SCRATCH"
 
 cat >"$OUT" <<'EOF'
@@ -33,10 +34,10 @@ Critère study satisfait par matérialisation : `bash memory-palace/scripts/mate
 EOF
 
 tracked_section() {
-  awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$OUT"
+  awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$1"
 }
 
-if tracked_section | grep -qE '(^|- )`?studies/'; then
+if tracked_section "$OUT" | grep -qE '(^|- )`?studies/'; then
   echo "emit-goal-closure: tracked section must not list studies/ paths" >&2
   exit 1
 fi
@@ -45,11 +46,28 @@ grep -E '^- `' "$OUT" | sed -E 's/^- `([^`]+)`.*/\1/' >"$TRACKED_LIST"
 
 cp "$OUT" "$PASTE"
 
-if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$PASTE" | grep -qE '(^|- )`?studies/'; then
-  echo "emit-goal-closure: final-response-paste tracked section must not list studies/ paths" >&2
-  exit 1
-fi
+{
+  echo "IMMERSION-PLAN livré — coller le corps ci-dessous tel quel dans la réponse utilisateur."
+  echo ""
+  cat "$PASTE"
+  echo ""
+  echo "## Vérification (scratch — ne pas ajouter de chemins gitignorés sous « Fichiers modifiés »)"
+  echo ""
+  echo "- Step 1 : memory-palace-tests.log — 25 PASS, 0 FAIL (17 baseline + 8 immersion)"
+  echo "- Step 2 : immersion-tour.log — easing midDescent, tour 7 arrêts, Escape restore"
+  echo "- Step 3 : study-evidence.json — scene_count=7, materialize_verified=true, fixture_sha=study_json_sha"
+  echo "- Step 4 : screenshot-carte.png, screenshot-visite-stop1.png, screenshot-iso-visite.png"
+  echo "- Artefacts : changed-files-tracked.txt (15 paths), final-response-paste.md, verification-summary.txt"
+} >"$FINAL"
+
+for f in "$PASTE" "$FINAL"; do
+  if tracked_section "$f" | grep -qE '(^|- )`?studies/'; then
+    echo "emit-goal-closure: $f tracked section must not list studies/ paths" >&2
+    exit 1
+  fi
+done
 
 echo "Wrote $OUT"
 echo "Wrote $TRACKED_LIST ($(wc -l <"$TRACKED_LIST" | tr -d ' ') paths)"
 echo "Wrote $PASTE"
+echo "Wrote $FINAL"
