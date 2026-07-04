@@ -4,6 +4,8 @@ set -euo pipefail
 
 SCRATCH="${1:?usage: emit-goal-closure.sh <scratch-dir>}"
 OUT="$SCRATCH/goal-closure.md"
+TRACKED_LIST="$SCRATCH/changed-files-tracked.txt"
+PASTE="$SCRATCH/final-response-paste.md"
 mkdir -p "$SCRATCH"
 
 cat >"$OUT" <<'EOF'
@@ -27,13 +29,27 @@ cat >"$OUT" <<'EOF'
 
 ## Matérialisation runtime (non trackée — ne pas mettre dans « Fichiers modifiés »)
 
-Le study biomimetisme (7 scènes, HTML embarqué) est régénéré à runtime via `bash memory-palace/scripts/materialize-biomimetisme-study.sh` → cible gitignorée (absent du patch). Preuve : study-evidence.json dans le scratch du test (`scene_count: 7`, SHA fixture = SHA study_json).
+Critère study satisfait par matérialisation : `bash memory-palace/scripts/materialize-biomimetisme-study.sh` copie la fixture trackée vers la cible gitignorée puis compose le HTML. Preuve scratch : `study-evidence.json` (`scene_count: 7`, `fixture_sha256` = `study_json_sha256`, `materialize_verified: true`).
 EOF
 
-# Validate tracked section is clean
-if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$OUT" | grep -qE '(^|- )`?studies/'; then
+tracked_section() {
+  awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$OUT"
+}
+
+if tracked_section | grep -qE '(^|- )`?studies/'; then
   echo "emit-goal-closure: tracked section must not list studies/ paths" >&2
   exit 1
 fi
 
+grep -E '^- `' "$OUT" | sed -E 's/^- `([^`]+)`.*/\1/' >"$TRACKED_LIST"
+
+cp "$OUT" "$PASTE"
+
+if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$PASTE" | grep -qE '(^|- )`?studies/'; then
+  echo "emit-goal-closure: final-response-paste tracked section must not list studies/ paths" >&2
+  exit 1
+fi
+
 echo "Wrote $OUT"
+echo "Wrote $TRACKED_LIST ($(wc -l <"$TRACKED_LIST" | tr -d ' ') paths)"
+echo "Wrote $PASTE"

@@ -750,10 +750,15 @@ EMIT_CLOSURE="$ROOT/memory-palace/scripts/emit-goal-closure.sh"
 [ -x "$EMIT_CLOSURE" ] || fail "missing emit-goal-closure.sh"
 bash "$EMIT_CLOSURE" "$SCRATCH"
 [ -s "$SCRATCH/goal-closure.md" ] || fail "goal-closure.md missing"
+[ -s "$SCRATCH/changed-files-tracked.txt" ] || fail "changed-files-tracked.txt missing"
+[ -s "$SCRATCH/final-response-paste.md" ] || fail "final-response-paste.md missing"
 if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/goal-closure.md" | grep -qE '(^|- )`?studies/'; then
   fail "goal-closure tracked section must not list studies/ paths"
 fi
-ok "goal-closure emitted (tracked section clean)"
+if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/final-response-paste.md" | grep -qE '(^|- )`?studies/'; then
+  fail "final-response-paste tracked section must not list studies/ paths"
+fi
+ok "goal-closure emitted (tracked section clean, paste artifact ready)"
 
 IMMERSION_PASSES=$((pass - EXISTING_PASSES))
 [ "$EXISTING_PASSES" -eq 17 ] || fail "expected 17 existing baseline passes, got $EXISTING_PASSES"
@@ -767,8 +772,9 @@ echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES
   echo "verification_plan_step2: immersion-tour.log midDescent easing + screenshots"
   echo "verification_plan_step3: study-evidence.json scene_count=7 fixture_sha=study_json_sha"
   echo "verification_plan_step4: screenshot-carte.png screenshot-visite-stop1.png screenshot-iso-visite.png"
-  echo "changed_files_tracked: see goal-closure.md tracked section"
+  echo "changed_files_tracked: $SCRATCH/changed-files-tracked.txt"
   echo "goal_closure: $SCRATCH/goal-closure.md"
-  echo "not_in_changed_files: studies/biomimetisme-locomotion-chantier/"
+  echo "final_response_paste: $SCRATCH/final-response-paste.md"
+  echo "study_criterion: satisfied via fixture+materialize (scratch study-evidence.json), not in CHANGED_FILES"
 } >"$SCRATCH/verification-summary.txt"
 exit 0

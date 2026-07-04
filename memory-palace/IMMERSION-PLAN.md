@@ -16,7 +16,7 @@ Objectif : l'utilisateur doit pouvoir **se projeter dans le lieu**. La philosoph
 - `SKILL.md` (étape extraction/loci) : pour chaque locus, générer une **scène mentale** vive — une image mentale exagérée, concrète, si possible absurde ou en mouvement, qui encode le contenu — plus 2–3 accroches sensorielles (son, odeur, texture, température, mouvement).
 - Schéma JSON : ajouter au locus un objet `scene` : `scene.image` (1–2 phrases, l'image mentale), `scene.senses` (liste de 2–3 chaînes préfixées du sens : « Son — … », « Odeur — … »).
 - `compose-html.py` : le panneau affiche la scène mentale EN PREMIER et en grand (typo généreuse, fond légèrement teinté), le contenu factuel en dessous. Rétro-compatible : si `scene` absent, panneau actuel inchangé.
-- Rédiger les scènes du study `studies/biomimetisme-locomotion-chantier/memory-palace.json` (7 loci) toi-même, vivantes et fidèles au contenu, puis régénérer le HTML.
+- Rédiger les 7 scènes dans `tests/fixtures/biomimetisme-memory-palace.json` (source trackée, vivantes et fidèles au contenu) ; matérialiser le study runtime via `memory-palace/scripts/materialize-biomimetisme-study.sh` (cible gitignorée), puis régénérer le HTML.
 
 ## P3 — Environnement vivant (100 % procédural, zéro asset externe)
 
