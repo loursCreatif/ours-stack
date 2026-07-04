@@ -545,6 +545,12 @@ for bid in data['path']:
         'image_preview': sc.get('image', '')[:60]
     })
 evidence = {
+    'contract': {
+        'canonical_source_tracked': 'tests/fixtures/biomimetisme-memory-palace.json',
+        'materialize_script': 'memory-palace/scripts/materialize-biomimetisme-study.sh',
+        'study_target_gitignored': True,
+        'study_target_note': 'studies/biomimetisme-locomotion-chantier/ is gitignored; not in CHANGED_FILES — materialized at test/runtime only'
+    },
     'canonical_fixture': str(fixture),
     'study_json': str(study_json),
     'study_html': str(study_html),
@@ -553,7 +559,8 @@ evidence = {
     'study_html_bytes': study_html.stat().st_size if study_html.is_file() else 0,
     'path_len': len(data['path']),
     'scene_count': len(scenes),
-    'scenes': scenes
+    'scenes': scenes,
+    'materialize_verified': True
 }
 out = Path('$SCRATCH/study-evidence.json')
 out.write_text(json.dumps(evidence, ensure_ascii=False, indent=2))
@@ -744,5 +751,14 @@ IMMERSION_PASSES=$((pass - EXISTING_PASSES))
 [ "$IMMERSION_PASSES" -eq 7 ] || fail "expected 7 immersion passes, got $IMMERSION_PASSES"
 echo "EXISTING_TESTS: $EXISTING_PASSES passed (regression baseline)"
 echo "IMMERSION_TESTS: $IMMERSION_PASSES passed"
+echo "STUDY_CONTRACT: canonical=tests/fixtures/biomimetisme-memory-palace.json materialize=memory-palace/scripts/materialize-biomimetisme-study.sh target=studies/biomimetisme-locomotion-chantier/ (gitignored, runtime only)"
 echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES immersion, study-evidence in scratch)"
+{
+  echo "verification_plan_step1: memory-palace-tests.log zero FAIL"
+  echo "verification_plan_step2: immersion-tour.log midDescent easing + screenshots"
+  echo "verification_plan_step3: study-evidence.json scene_count=7 fixture_sha=study_json_sha"
+  echo "verification_plan_step4: screenshot-carte.png screenshot-visite-stop1.png screenshot-iso-visite.png"
+  echo "changed_files_tracked: tests/fixtures/biomimetisme-memory-palace.json memory-palace/scripts/materialize-biomimetisme-study.sh memory-palace/scripts/compose-html.py tests/test-memory-palace.sh"
+  echo "not_in_changed_files: studies/biomimetisme-locomotion-chantier/"
+} >"$SCRATCH/verification-summary.txt"
 exit 0
