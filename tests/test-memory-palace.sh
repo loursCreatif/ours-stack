@@ -746,9 +746,18 @@ else
   ok "immersion structural only (playwright unavailable)"
 fi
 
+EMIT_CLOSURE="$ROOT/memory-palace/scripts/emit-goal-closure.sh"
+[ -x "$EMIT_CLOSURE" ] || fail "missing emit-goal-closure.sh"
+bash "$EMIT_CLOSURE" "$SCRATCH"
+[ -s "$SCRATCH/goal-closure.md" ] || fail "goal-closure.md missing"
+if awk '/^## Fichiers modifiés/,/^## Matérialisation/' "$SCRATCH/goal-closure.md" | grep -qE '(^|- )`?studies/'; then
+  fail "goal-closure tracked section must not list studies/ paths"
+fi
+ok "goal-closure emitted (tracked section clean)"
+
 IMMERSION_PASSES=$((pass - EXISTING_PASSES))
 [ "$EXISTING_PASSES" -eq 17 ] || fail "expected 17 existing baseline passes, got $EXISTING_PASSES"
-[ "$IMMERSION_PASSES" -eq 7 ] || fail "expected 7 immersion passes, got $IMMERSION_PASSES"
+[ "$IMMERSION_PASSES" -eq 8 ] || fail "expected 8 immersion passes, got $IMMERSION_PASSES"
 echo "EXISTING_TESTS: $EXISTING_PASSES passed (regression baseline)"
 echo "IMMERSION_TESTS: $IMMERSION_PASSES passed"
 echo "STUDY_CONTRACT: canonical=tests/fixtures/biomimetisme-memory-palace.json materialize=memory-palace/scripts/materialize-biomimetisme-study.sh target=studies/biomimetisme-locomotion-chantier/ (gitignored, runtime only)"
@@ -758,7 +767,8 @@ echo "Summary: $pass tests passed ($EXISTING_PASSES existing + $IMMERSION_PASSES
   echo "verification_plan_step2: immersion-tour.log midDescent easing + screenshots"
   echo "verification_plan_step3: study-evidence.json scene_count=7 fixture_sha=study_json_sha"
   echo "verification_plan_step4: screenshot-carte.png screenshot-visite-stop1.png screenshot-iso-visite.png"
-  echo "changed_files_tracked: tests/fixtures/biomimetisme-memory-palace.json memory-palace/scripts/materialize-biomimetisme-study.sh memory-palace/scripts/compose-html.py tests/test-memory-palace.sh"
+  echo "changed_files_tracked: see goal-closure.md tracked section"
+  echo "goal_closure: $SCRATCH/goal-closure.md"
   echo "not_in_changed_files: studies/biomimetisme-locomotion-chantier/"
 } >"$SCRATCH/verification-summary.txt"
 exit 0
