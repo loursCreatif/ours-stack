@@ -883,7 +883,9 @@ SCENE_JS = r"""
       const bcol = buildingColors(stepIdx);
       const bodyMat = new THREE.MeshLambertMaterial({
         color: loc.blocked ? 0xcccccc : bcol.wall,
-        emissive: 0x000000
+        map: loc.blocked ? null : wallTexFor(bcol.wall),
+        emissive: loc.blocked ? 0x000000 : bcol.wall,
+        emissiveIntensity: loc.blocked ? 0 : 0.14
       });
       const body = shadowMesh(new THREE.Mesh(new THREE.BoxGeometry(fw, h, fd), bodyMat));
       body.position.y = h / 2;
@@ -1003,15 +1005,146 @@ SCENE_JS = r"""
     let tourTween = null;
     let tourMode3d = false;
 
+    function roofTopY(loc, stopIdx) {
+      const h = buildingHeight(loc, stopIdx);
+      const variant = roofVariant(stopIdx, loc);
+      if (variant === 'pitch') return h + h * 0.18 + h * 0.42;
+      if (variant === 'gable') return h + h * 0.38 * 0.35 + 0.25;
+      if (variant === 'scaffold') return h;
+      return h + 0.15 + 0.35;
+    }
+
     function buildingBBoxCorners(loc, stopIdx) {
       const [fx, fz, fw, fd] = loc.footprint;
-      const h = buildingHeight(loc, stopIdx);
+      const topY = roofTopY(loc, stopIdx);
       const corners = [];
       [[fx, fz], [fx + fw, fz], [fx + fw, fz + fd], [fx, fz + fd]].forEach(([x, z]) => {
         corners.push(new THREE.Vector3(x, 0, z));
-        corners.push(new THREE.Vector3(x, h, z));
+        corners.push(new THREE.Vector3(x, topY, z));
       });
       return corners;
+    }
+
+    function tourApproachDir(stopIdx) {
+      const id = data.path[stopIdx];
+      const loc = locusById[id];
+      if (!loc) return { x: 0, z: 1 };
+      const [fx, fz, fw, fd] = loc.footprint;
+      const cx = fx + fw / 2;
+      const cz = fz + fd / 2;
+      let dx = 0;
+      let dz = 1;
+      if (stopIdx > 0) {
+        const prev = locusById[data.path[stopIdx - 1]];
+        const [px, pz, pw, pd] = prev.footprint;
+        dx = cx - (px + pw / 2);
+        dz = cz - (pz + pd / 2);
+      } else if (data.path.length > 1) {
+        const next = locusById[data.path[1]];
+        const [nx, nz, nw, nd] = next.footprint;
+        dx = cx - (nx + nw / 2);
+        dz = cz - (nz + nd / 2);
+      }
+      const len = Math.hypot(dx, dz) || 1;
+      return { x: dx / len, z: dz / len };
+    }
+
+    function readCanvasBuffer() {
+      renderer.render(scene, camera);
+      const w = canvas.width;
+      const h = canvas.height;
+      const buf = new Uint8Array(w * h * 4);
+      const gl = renderer.getContext();
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      return { w, h, buf };
+    }
+
+    function sampleProjectedRegion(corners) {
+      const { w, h, buf } = readCanvasBuffer();
+      let minNx = 1, maxNx = 0, minNy = 1, maxNy = 0;
+      corners.forEach(p => {
+        tmpProj.copy(p);
+        tmpProj.project(camera);
+        if (tmpProj.z > 1) return;
+        const nx = (tmpProj.x + 1) / 2;
+        const ny = (-tmpProj.y + 1) / 2;
+        minNx = Math.min(minNx, nx);
+        maxNx = Math.max(maxNx, nx);
+        minNy = Math.min(minNy, ny);
+        maxNy = Math.max(maxNy, ny);
+      });
+      const x0 = Math.max(0, Math.floor(minNx * w));
+      const x1 = Math.min(w - 1, Math.ceil(maxNx * w));
+      const y0 = Math.max(0, Math.floor(minNy * h));
+      const y1 = Math.min(h - 1, Math.ceil(maxNy * h));
+      const lums = [];
+      const hueBins = new Set();
+      for (let py = y0; py <= y1; py += 2) {
+        for (let px = x0; px <= x1; px += 2) {
+          const i = (py * w + px) * 4;
+          const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+          if (r + g + b < 40) continue;
+          lums.push(0.299 * r + 0.587 * g + 0.114 * b);
+          hueBins.add((r >> 5) + ',' + (g >> 5) + ',' + (b >> 5));
+        }
+      }
+      let variance = 0;
+      if (lums.length > 1) {
+        const mean = lums.reduce((a, v) => a + v, 0) / lums.length;
+        variance = lums.reduce((a, v) => a + (v - mean) ** 2, 0) / lums.length;
+      }
+      return {
+        samplePixels: lums.length,
+        meanLuminance: lums.length ? lums.reduce((a, v) => a + v, 0) / lums.length : 0,
+        distinctHueBins: hueBins.size,
+        pixelVariance: variance
+      };
+    }
+
+    function sampleBuildingPaletteStats() {
+      const { w, h, buf } = readCanvasBuffer();
+      const lums = [];
+      const hueBins = new Set();
+      let perBuilding = 0;
+      data.path.forEach((id, idx) => {
+        const loc = locusById[id];
+        if (!loc || loc.kind !== 'building') return;
+        const corners = buildingBBoxCorners(loc, idx);
+        let minNx = 1, maxNx = 0, minNy = 1, maxNy = 0;
+        corners.forEach(p => {
+          tmpProj.copy(p);
+          tmpProj.project(camera);
+          if (tmpProj.z > 1) return;
+          const nx = (tmpProj.x + 1) / 2;
+          const ny = (-tmpProj.y + 1) / 2;
+          minNx = Math.min(minNx, nx);
+          maxNx = Math.max(maxNx, nx);
+          minNy = Math.min(minNy, ny);
+          maxNy = Math.max(maxNy, ny);
+        });
+        const x0 = Math.max(0, Math.floor(minNx * w));
+        const x1 = Math.min(w - 1, Math.ceil(maxNx * w));
+        const y0 = Math.max(0, Math.floor(minNy * h));
+        const y1 = Math.min(h - 1, Math.ceil(maxNy * h));
+        let hit = 0;
+        for (let py = y0; py <= y1; py += 2) {
+          for (let px = x0; px <= x1; px += 2) {
+            const i = (py * w + px) * 4;
+            const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+            if (r + g + b < 40) continue;
+            hit++;
+            lums.push(0.299 * r + 0.587 * g + 0.114 * b);
+            hueBins.add((r >> 5) + ',' + (g >> 5) + ',' + (b >> 5));
+          }
+        }
+        if (hit > 0) perBuilding++;
+      });
+      return {
+        meanBuildingLuminance: lums.length ? lums.reduce((a, v) => a + v, 0) / lums.length : 0,
+        distinctHueBins: hueBins.size,
+        samplePixels: lums.length,
+        perBuilding
+      };
     }
 
     function measureFramingAtPose(pos, look, corners) {
@@ -1051,32 +1184,45 @@ SCENE_JS = r"""
       if (!loc) return null;
       const [fx, fz, fw, fd] = loc.footprint;
       const h = buildingHeight(loc, stopIdx);
+      const topY = roofTopY(loc, stopIdx);
       const cx = fx + fw / 2;
       const cz = fz + fd / 2;
       const corners = buildingBBoxCorners(loc, stopIdx);
-      const look = new THREE.Vector3(cx, h * 0.48, cz);
+      const approach = tourApproachDir(stopIdx);
+      const look = new THREE.Vector3(cx, topY * 0.42, cz);
       const span = Math.max(fw, fd);
-      const minStand = span * 0.55 + 2.2;
-      const maxStand = span * 3.2 + 10;
+      const minStand = span * 0.65 + 3;
+      const maxStand = span * 3.6 + 12;
       const candidates = [];
       for (let stand = minStand; stand <= maxStand; stand += 0.25) {
-        const pos = new THREE.Vector3(cx, EYE_HEIGHT, cz + fd / 2 + stand);
+        const pos = new THREE.Vector3(
+          cx + approach.x * stand,
+          EYE_HEIGHT,
+          cz + approach.z * stand
+        );
         const m = measureFramingAtPose(pos, look, corners);
         if (m.allCornersInView) candidates.push({ pos: pos.clone(), look: look.clone(), m });
       }
       const inBand = candidates.filter(c =>
-        c.m.projectedHeightRatio >= 0.35 && c.m.projectedHeightRatio <= 0.65
+        c.m.projectedHeightRatio >= 0.35 && c.m.projectedHeightRatio <= 0.55
+        && c.m.minNy >= 0.10
       );
       const pick = (list) => {
-        list.sort((a, b) =>
-          Math.abs(a.m.projectedHeightRatio - 0.5) - Math.abs(b.m.projectedHeightRatio - 0.5)
-        );
+        list.sort((a, b) => {
+          const scoreA = Math.abs(a.m.projectedHeightRatio - 0.45) - a.m.minNy * 0.35;
+          const scoreB = Math.abs(b.m.projectedHeightRatio - 0.45) - b.m.minNy * 0.35;
+          return scoreA - scoreB;
+        });
         return { pos: list[0].pos, look: list[0].look };
       };
       if (inBand.length) return pick(inBand);
+      const relaxed = candidates.filter(c =>
+        c.m.projectedHeightRatio >= 0.35 && c.m.projectedHeightRatio <= 0.65
+      );
+      if (relaxed.length) return pick(relaxed);
       if (candidates.length) return pick(candidates);
       return {
-        pos: new THREE.Vector3(cx, EYE_HEIGHT, cz + fd / 2 + maxStand),
+        pos: new THREE.Vector3(cx + approach.x * maxStand, EYE_HEIGHT, cz + approach.z * maxStand),
         look
       };
     }
@@ -1096,6 +1242,10 @@ SCENE_JS = r"""
       }
       framing.pathSpritesVisible = visibleSprites;
       framing.pathSpritesHidden = visibleSprites === 0;
+      framing.skyBandNy = framing.minNy;
+      const region = sampleProjectedRegion(corners);
+      framing.canvasPixelVariance = region.pixelVariance;
+      framing.canvasSamplePixels = region.samplePixels;
       return framing;
     }
 
@@ -1415,7 +1565,8 @@ SCENE_JS = r"""
         tourStop: tourStopIdx,
         cameraY: camera.position.y,
         tourMode3d: tourMode3d,
-        tourFraming: (tourActive && tourMode3d) ? getTourFramingMetrics(tourStopIdx) : null
+        tourFraming: (tourActive && tourMode3d) ? getTourFramingMetrics(tourStopIdx) : null,
+        buildingPaletteStats: (!tourActive && navLevel === 'site') ? sampleBuildingPaletteStats() : null
       };
     };
 
