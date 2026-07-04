@@ -103,7 +103,7 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 | `/mind-map` | Interactive mind map from brief/notes/report — `mind-map.json` (editable) + `mind-map.html` (pan/zoom, expand/collapse, source links); no new research |
 | `/memory-palace` | Oblique relief map (method of loci) — click buildings, drill-down interiors, concept panel; `memory-palace.json` + `.html`; no FPS movement |
 | `/infographic` | One memorable visual from existing study/research text — `image_gen` when available, else export prompt (`/visual-proof` alias) |
-| `/council` | Multi-agent council for a study wedge or learning plan — dynamic panel, disagreement, final fusion, `council.md` artifact |
+| `/council` | Table ronde vivante — 3–5 historical/relevant figures debate a topic live in chat, the user participates at the table; meeting minutes in `council.md` |
 | `/dialogue` | 1-on-1 Socratic dialogue with a historical/public figure — persona card + transcript; challenges beliefs; informed epistemic mode default (alias `/dialogue-historique`) |
 | `/study-status` | Read-only dashboard — criteria checked, artifacts on disk, suggested next step per study; local `studies/` + optional `~/.ours-stack/studies-index.jsonl`; no file writes |
 
@@ -118,16 +118,16 @@ Register on each `brief.md` write: `bin/ours-stack-register-study`. Backfill exi
 - User wants spatial memory / relief map / palais cliquable (not FPS) → `/memory-palace` — **not** auto-chained
 - User wants **one** shareable visual summary (poster, thread hook, slide) from notes/report/brief → `/infographic` (alias `/visual-proof`) — **not** auto-chained
 - After `/infographic` in PROMPT mode, user pastes result back → re-run with attachment + `image_edit` if available
-- User wants multi-agent critique, advisor panel, study strategy, plan pressure-test, or `/council` → `/council` — **not** auto-chained
-- `brief.md` exists and user asks "what should I do next?" with real ambiguity → `/council` (not `/source-scout` or `/deep-research`)
+- User wants a round table, a debate between several figures ("fais discuter X, Y et Z", "table ronde", "réunion"), or `/council` → `/council` — **not** auto-chained
+- `brief.md` exists and user asks "what should I do next?" → `/study-status` for facts; `/council` only if the user wants to debate the question with a panel
 - User wants sources only → `/source-scout`, not `/council`
 - User wants full research answer → `/deep-research`, not `/council`
 - User wants 1-on-1 dialogue with a figure (Darwin, Tesla, …), "discuter avec", belief testing in character → `/dialogue` — **not** auto-chained
-- User wants multi-agent panel or study plan debate → `/council`, not `/dialogue`
+- User wants several figures at once (round table, debate) → `/council`, not `/dialogue`
 - User has anchor source and wants dense extraction → `/dense-read` — **not** auto-chained
 - Brief exists, sources listed, user wants to read anchor against wedge → `/dense-read` (after `/source-scout` if sources TBD)
 - User has a brief and **explicitly** wants to publish → future `/proof-draft` (never auto-create `proof.md`)
-- User asks where studies stand, "où j'en suis", statut, tableau de bord, or "what's next" (status view) → `/study-status` — **not** auto-chained; use `/council` when strategy debate is the goal, not a dashboard
+- User asks where studies stand, "où j'en suis", statut, tableau de bord, or "what's next" (status view) → `/study-status` — **not** auto-chained; use `/council` when the user wants a live panel debate, not a dashboard
 
 ## Privacy
 

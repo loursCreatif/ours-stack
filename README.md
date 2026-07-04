@@ -29,7 +29,7 @@ Run `./setup` once — it creates the local compatibility links used by supporte
 /mind-map           → carte mentale        → mind-map.json + mind-map.html
 /memory-palace      → carte relief oblique  → studies/<slug>/memory-palace.html
 /infographic        → visuel mémorable     → visual-proof.png or infographic-prompt.md
-/council            → advisory panel       → studies/<slug>/council.md
+/council            → table ronde vivante  → studies/<slug>/council.md
 /dialogue → talk with a figure  → studies/<slug>/dialogue/<persona>/
 /study-status      → study dashboard      → chat only (read-only)
 ```
@@ -37,7 +37,7 @@ Run `./setup` once — it creates the local compatibility links used by supporte
 `/deep-research` is **standalone** — invoke it directly on any question; no pipeline required.
 `/layout-html` turns **finished text** into one self-contained HTML page — editorial typography, SVG figures built only from source data; opens offline (`file://`). No new research.
 `/infographic` (alias `/visual-proof`) turns study notes or reports into **one** poster-style visual — generates PNG when an image model is connected, otherwise exports a paste-ready prompt for Midjourney, DALL·E, or Flux.
-`/dialogue` is **standalone** — 1-on-1 Socratic dialogue; use `/council` for multi-agent panels. Alias: `/dialogue-historique`.
+`/dialogue` is **standalone** — 1-on-1 Socratic dialogue; use `/council` for a live round table with several figures (the user participates). Alias: `/dialogue-historique`.
 `/study-status` is **read-only** — criteria, artifacts, and suggested next step per study; no file output.
 
 Cross-project memory lives in `~/.ours-stack/studies-index.jsonl`. `./setup` backfills existing `studies/` into the index.
@@ -56,8 +56,8 @@ Examples:
 /memory-palace biomimetisme-locomotion-chantier
 /memory-palace research/robots-assemblage-structurel-chantier theme construction
 /infographic biomimetisme-locomotion-chantier
+/council fais débattre Tesla, Edison et Elinor Ostrom sur l'énergie décentralisée
 /council robotique-assemblage-structurel
-/council critique this plan: <paste>
 /dialogue discuter de l'évolution avec Darwin
 /dialogue robotique-assemblage-structurel
 /study-status
