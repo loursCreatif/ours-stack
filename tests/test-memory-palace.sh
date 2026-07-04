@@ -4,15 +4,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 COMPOSE="$ROOT/memory-palace/scripts/compose-html.py"
+MATERIALIZE="$ROOT/memory-palace/scripts/materialize-biomimetisme-study.sh"
 FIXTURE="$ROOT/tests/fixtures/biomimetisme-memory-palace.json"
 STUDY_DIR="$ROOT/studies/biomimetisme-locomotion-chantier"
 STUDY_JSON="$STUDY_DIR/memory-palace.json"
 SCRATCH="${MEMORY_PALACE_TEST_SCRATCH:-/var/folders/nb/hms4jttd77xfdkwyqtwbx79w0000gn/T/grok-goal-c77839e7534a/implementer}"
-mkdir -p "$SCRATCH" "$STUDY_DIR"
+mkdir -p "$SCRATCH"
 
 [ -f "$COMPOSE" ] || { echo "FAIL: missing $COMPOSE"; exit 1; }
+[ -x "$MATERIALIZE" ] || { echo "FAIL: missing $MATERIALIZE"; exit 1; }
 [ -f "$FIXTURE" ] || { echo "FAIL: missing $FIXTURE"; exit 1; }
-cp "$FIXTURE" "$STUDY_JSON"
 
 pass=0
 fail() { echo "FAIL: $*"; exit 1; }
@@ -24,10 +25,10 @@ LOG="$SCRATCH/memory-palace-tests.log"
 exec > >(tee "$LOG") 2>&1
 
 STUDY_HTML="$STUDY_DIR/memory-palace.html"
-python3 "$COMPOSE" "$STUDY_JSON" >"$SCRATCH/regen-study.log" 2>&1
-[ -s "$STUDY_HTML" ] || { cat "$SCRATCH/regen-study.log" >&2; fail "study HTML regen failed"; }
+bash "$MATERIALIZE" >"$SCRATCH/regen-study.log" 2>&1
+[ -s "$STUDY_HTML" ] || { cat "$SCRATCH/regen-study.log" >&2; fail "materialize-biomimetisme-study.sh failed"; }
 grep -q 'const PALACE_DATA' "$STUDY_HTML" || fail "study HTML missing PALACE_DATA"
-ok "regenerate study HTML via default output path"
+ok "materialize-biomimetisme-study.sh: fixture → study json+html"
 
 python3 "$COMPOSE" "$FIXTURE" -o "$HTML_3D" >/dev/null
 python3 "$COMPOSE" "$FIXTURE" -o "$HTML_2D" --2d-only >/dev/null
@@ -493,6 +494,8 @@ EXISTING_PASSES=$pass
 echo "EXISTING_BASELINE: $EXISTING_PASSES tests passed before immersion checks"
 
 # --- Immersion: structural tokens in compose source ---
+[ -x "$MATERIALIZE" ] || fail "materialize script not executable"
+grep -q 'biomimetisme-memory-palace.json' "$MATERIALIZE" || fail "materialize script must reference canonical fixture"
 for token in 'Visite guidée' 'btn-tour' 'tour-nav' 'scene-block' 'scene.image' 'startTour' 'endTour' 'computeTourPose' 'makeSkyTexture' 'foliageAnim' 'iso-tree' 'skyGrad'; do
   if ! grep -q "$token" "$COMPOSE"; then
     fail "missing immersion token in compose: $token"
@@ -559,7 +562,7 @@ assert evidence['study_json_sha256'] == evidence['fixture_sha256']
 assert evidence['study_html_bytes'] > 100000
 " || fail "study-evidence.json generation failed"
 [ -s "$SCRATCH/study-evidence.json" ] || fail "study-evidence.json missing"
-ok "study sync: fixture copied to study json, evidence in scratch"
+ok "materialize study evidence: fixture sha matches study json on disk"
 
 # --- Immersion: scenes embedded in generated HTML ---
 python3 -c "
