@@ -146,7 +146,7 @@ footer { text-align: center; font-size: .72rem; color: var(--muted); padding: .3
 
 ## Renderer JS
 
-**Minimal offline fallback only.** The embedded renderer in `scripts/compose-html.py` is the source of truth and is richer: importance-based bubble sizing, centered/tree layout toggle, search that auto-expands collapsed matches with a result counter, and animated zoom-to-branch on node click. Prefer regenerating with the script whenever python3 is available.
+**Minimal offline fallback only.** The embedded renderer in `scripts/compose-html.py` is the source of truth and is richer: importance-based bubble sizing, centered/tree layout toggle, search that auto-expands collapsed matches with a result counter and Enter-to-cycle navigation, animated zoom-to-branch on node click, "+N" badges on collapsed branches, and a clickable breadcrumb in the panel with the path to root lit on the map. Prefer regenerating with the script whenever python3 is available.
 
 Copy this block verbatim into every generated HTML. Reads `#map-data` JSON.
 

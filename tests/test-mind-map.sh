@@ -583,5 +583,26 @@ python3 "$COMPOSE" "$VALID" "$UX_HTML" >/dev/null
 grep -q 'descendantCount' "$UX_HTML" || fail "badge logic absent from composed HTML"
 ok "exploration UX: +N badge, Escape/dblclick/reset overview, Enter cycles matches"
 
+# 43 — breadcrumb + lit path: panel shows root›…›node chain, ancestors clickable, path highlighted
+python3 -c "
+from pathlib import Path
+js = Path('$COMPOSE').read_text()
+assert 'function pathTo' in js, 'missing pathTo (root-to-node chain)'
+assert 'function renderPath' in js, 'missing breadcrumb rendering'
+assert 'selectedPath = new Set(chain.map' in js, 'showPanel must record the selected path'
+assert \"showPanel(n); focusOn(n);\" in js, 'breadcrumb ancestors must be clickable (panel + zoom)'
+assert 'link-path' in js, 'path links must get the link-path class'
+assert \"' on-path'\" in js, 'path nodes must get the on-path class'
+assert '.link-path { stroke: var(--accent)' in js, 'lit links must use the accent color'
+assert '.node.on-path rect' in js, 'lit nodes must be styled'
+assert 'panel-path' in js, 'panel must contain the breadcrumb container'
+assert \"selectedPath = new Set();\" in js, 'closing the panel must clear the lit path'
+" || fail "breadcrumb/lit-path contract"
+CRUMB_HTML="$SCRATCH/crumb.html"
+python3 "$COMPOSE" "$VALID" "$CRUMB_HTML" >/dev/null
+grep -q 'panel-path' "$CRUMB_HTML" || fail "breadcrumb container absent from composed HTML"
+grep -q 'function pathTo' "$CRUMB_HTML" || fail "pathTo absent from composed HTML"
+ok "breadcrumb + lit path: chain in panel, clickable ancestors, accent-lit route to root"
+
 echo "Summary: $pass tests passed"
 exit 0

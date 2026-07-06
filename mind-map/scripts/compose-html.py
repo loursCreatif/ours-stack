@@ -62,6 +62,11 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 .panel { width: 280px; flex-shrink: 0; background: var(--surface); border-left: 1px solid var(--border); padding: 1rem; overflow-y: auto; position: relative; }
 .panel[hidden] { display: none; }
 .panel-close { position: absolute; top: .5rem; right: .5rem; border: none; background: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); }
+.panel-path { font-size: .72rem; color: var(--muted); line-height: 1.6; margin-bottom: .35rem; padding-right: 1.2rem; }
+.panel-path .crumb { background: none; border: none; padding: 0; font: inherit; color: var(--secondary); cursor: pointer; }
+.panel-path .crumb:hover { text-decoration: underline; }
+.panel-path .sep { margin: 0 .25rem; }
+.panel-path .crumb-current { color: var(--text); font-weight: 600; }
 .panel-type { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .panel h2 { font-size: 1rem; margin: .35rem 0; color: var(--accent); }
 .panel-summary { font-size: .88rem; line-height: 1.5; color: var(--muted); font-style: italic; margin-bottom: .5rem; }
@@ -75,6 +80,8 @@ body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--t
 .node text { pointer-events: none; }
 .link { fill: none; stroke: var(--border); stroke-width: 1.5; }
 .link-source { stroke: var(--secondary); stroke-dasharray: 4 3; }
+.link-path { stroke: var(--accent); stroke-width: 2.5; }
+.node.on-path rect { stroke: var(--accent); stroke-width: 2.5; }
 footer { text-align: center; font-size: .72rem; color: var(--muted); padding: .35rem; border-top: 1px solid var(--border); flex-shrink: 0; }
 @media (max-width: 700px) {
   .workspace { flex-direction: column; }
@@ -249,6 +256,19 @@ RENDERER_JS = r"""
   }
 
   let lastLayouts = new Map();
+  let selectedPath = new Set();
+
+  function pathTo(target) {
+    const acc = [];
+    function visit(n) {
+      acc.push(n);
+      if (n.id === target.id) return true;
+      for (const c of (n.children || [])) if (visit(c)) return true;
+      acc.pop();
+      return false;
+    }
+    return visit(data.root) ? acc : [];
+  }
 
   function render() {
     const tree = layoutMap();
@@ -286,7 +306,8 @@ RENDERER_JS = r"""
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const mx = (nx + cx) / 2;
         path.setAttribute('d', `M${nx},${ny} C${mx},${ny} ${mx},${cy} ${cx},${cy}`);
-        path.setAttribute('class', 'link' + (c.node.type === 'source' ? ' link-source' : ''));
+        const onPath = selectedPath.has(layout.node.id) && selectedPath.has(c.node.id);
+        path.setAttribute('class', 'link' + (c.node.type === 'source' ? ' link-source' : '') + (onPath ? ' link-path' : ''));
         g.appendChild(path);
         drawLinks(c);
       });
@@ -299,7 +320,7 @@ RENDERER_JS = r"""
       const toggleLabel = hasKids ? (isCollapsed ? '+' + descendantCount(node) : '−') : '';
       const toggleW = hasKids ? Math.max(18, toggleLabel.length * (metrics.font + 1) * 0.62 + 6) : 0;
       const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      grp.setAttribute('class', 'node' + (isCollapsed ? ' collapsed' : '') + (node._hl ? ' highlight' : ''));
+      grp.setAttribute('class', 'node' + (isCollapsed ? ' collapsed' : '') + (node._hl ? ' highlight' : '') + (selectedPath.has(node.id) ? ' on-path' : ''));
       grp.setAttribute('data-importance', String(metrics.importance));
       grp.setAttribute('tabindex', '0');
       grp.setAttribute('role', 'button');
@@ -480,8 +501,34 @@ RENDERER_JS = r"""
     positionTooltip(e.clientX, e.clientY);
   }
 
+  function renderPath(chain) {
+    const el = document.getElementById('panel-path');
+    el.innerHTML = '';
+    el.hidden = chain.length <= 1;
+    chain.forEach((n, i) => {
+      if (i) {
+        const sep = document.createElement('span');
+        sep.className = 'sep'; sep.textContent = '›';
+        el.appendChild(sep);
+      }
+      if (i === chain.length - 1) {
+        const cur = document.createElement('span');
+        cur.className = 'crumb-current'; cur.textContent = n.label;
+        el.appendChild(cur);
+      } else {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'crumb'; btn.textContent = n.label;
+        btn.onclick = () => { showPanel(n); focusOn(n); };
+        el.appendChild(btn);
+      }
+    });
+  }
+
   function showPanel(node) {
     panel.hidden = false;
+    const chain = pathTo(node);
+    selectedPath = new Set(chain.map(n => n.id));
+    renderPath(chain);
     document.getElementById('panel-type').textContent = node.type;
     document.getElementById('panel-label').textContent = node.label;
     const summaryEl = document.getElementById('panel-summary');
@@ -509,6 +556,7 @@ RENDERER_JS = r"""
     }
     const link = document.getElementById('panel-link');
     if (node.href) { link.href = node.href; link.hidden = false; } else link.hidden = true;
+    render();
   }
 
   function walk(node, fn) { fn(node); (node.children || []).forEach(c => walk(c, fn)); }
@@ -537,7 +585,11 @@ RENDERER_JS = r"""
     resetView();
   };
   document.getElementById('btn-reset').onclick = overview;
-  document.getElementById('panel-close').onclick = () => { panel.hidden = true; };
+  document.getElementById('panel-close').onclick = () => {
+    panel.hidden = true;
+    selectedPath = new Set();
+    render();
+  };
   const searchEl = document.getElementById('search');
   const searchCount = document.getElementById('search-count');
   let preSearchCollapsed = null;
@@ -720,6 +772,7 @@ body.preset-{preset} {{ }}
       </div>
       <aside class="panel" id="panel" hidden>
         <button type="button" class="panel-close" id="panel-close" aria-label="Fermer">×</button>
+        <nav class="panel-path" id="panel-path" aria-label="Chemin depuis la racine" hidden></nav>
         <span class="panel-type" id="panel-type"></span>
         <h2 id="panel-label"></h2>
         <p class="panel-summary" id="panel-summary" hidden></p>
