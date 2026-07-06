@@ -565,5 +565,23 @@ python3 "$COMPOSE" "$VALID" "$FOCUS_HTML" >/dev/null
 grep -q 'function focusOn' "$FOCUS_HTML" || fail "focusOn absent from composed HTML"
 ok "click-to-focus: animated zoom on branch, cancellable, reduced-motion aware"
 
+# 42 — exploration UX: +N badge, animated overview (Escape/dblclick/reset), Enter cycles results
+python3 -c "
+from pathlib import Path
+js = Path('$COMPOSE').read_text()
+assert 'descendantCount' in js and \"'+' + descendantCount(node)\" in js, 'collapsed badge must show +N'
+assert 'function overview' in js, 'missing animated overview return'
+assert \"btn-reset').onclick = overview\" in js, 'reset button must use animated overview'
+assert js.count('overview()') >= 2, 'Escape and dblclick must call overview'
+assert 'dblclick' in js, 'missing dblclick-on-background return'
+assert 'searchMatches' in js and 'searchIdx' in js, 'missing Enter result navigation'
+assert 'focusOn(searchMatches[searchIdx])' in js, 'Enter must zoom to the match'
+assert \"e.shiftKey ? -1 : 1\" in js, 'Shift+Enter must cycle backwards'
+" || fail "exploration UX contract"
+UX_HTML="$SCRATCH/ux.html"
+python3 "$COMPOSE" "$VALID" "$UX_HTML" >/dev/null
+grep -q 'descendantCount' "$UX_HTML" || fail "badge logic absent from composed HTML"
+ok "exploration UX: +N badge, Escape/dblclick/reset overview, Enter cycles matches"
+
 echo "Summary: $pass tests passed"
 exit 0

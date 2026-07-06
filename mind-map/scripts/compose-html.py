@@ -119,6 +119,10 @@ RENDERER_JS = r"""
     return collapsed.has(node.id) ? [] : (node.children || []);
   }
 
+  function descendantCount(node) {
+    return (node.children || []).reduce((sum, c) => sum + 1 + descendantCount(c), 0);
+  }
+
   function explicitImportance(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return null;
@@ -291,8 +295,11 @@ RENDERER_JS = r"""
 
     nodes.forEach(({ node, x, y, w, boxH, metrics }) => {
       const hasKids = (node.children || []).length > 0;
+      const isCollapsed = collapsed.has(node.id);
+      const toggleLabel = hasKids ? (isCollapsed ? '+' + descendantCount(node) : '−') : '';
+      const toggleW = hasKids ? Math.max(18, toggleLabel.length * (metrics.font + 1) * 0.62 + 6) : 0;
       const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      grp.setAttribute('class', 'node' + (collapsed.has(node.id) ? ' collapsed' : '') + (node._hl ? ' highlight' : ''));
+      grp.setAttribute('class', 'node' + (isCollapsed ? ' collapsed' : '') + (node._hl ? ' highlight' : ''));
       grp.setAttribute('data-importance', String(metrics.importance));
       grp.setAttribute('tabindex', '0');
       grp.setAttribute('role', 'button');
@@ -308,11 +315,11 @@ RENDERER_JS = r"""
       rect.setAttribute('rx', metrics.radius); rect.setAttribute('fill', fill); rect.setAttribute('stroke', stroke);
       rect.setAttribute('stroke-width', 1 + metrics.importance * 0.22);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', x + (hasKids ? metrics.pad + 18 : metrics.pad));
+      text.setAttribute('x', x + (hasKids ? metrics.pad + toggleW : metrics.pad));
       text.setAttribute('y', y + boxH / 2 + metrics.font * 0.35);
       text.setAttribute('fill', textFill); text.setAttribute('font-size', String(metrics.font));
       text.setAttribute('font-weight', metrics.importance >= 4 ? '700' : '500');
-      const maxChars = Math.max(12, Math.floor((w - (hasKids ? metrics.pad + 34 : metrics.pad * 2)) / (metrics.font * 0.58)));
+      const maxChars = Math.max(12, Math.floor((w - (hasKids ? metrics.pad + toggleW + 16 : metrics.pad * 2)) / (metrics.font * 0.58)));
       const label = node.label.length > maxChars ? node.label.slice(0, Math.max(1, maxChars - 1)) + '…' : node.label;
       text.textContent = label;
       grp.appendChild(rect); grp.appendChild(text);
@@ -320,7 +327,7 @@ RENDERER_JS = r"""
         const tg = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         tg.setAttribute('class', 'toggle'); tg.setAttribute('x', x + metrics.pad); tg.setAttribute('y', y + boxH / 2 + metrics.font * 0.35);
         tg.setAttribute('fill', textFill); tg.setAttribute('font-size', String(metrics.font + 1)); tg.setAttribute('font-weight', '700');
-        tg.textContent = collapsed.has(node.id) ? '+' : '−';
+        tg.textContent = toggleLabel;
         grp.appendChild(tg);
       }
       function onActivate(e, toggleOnly) {
@@ -336,7 +343,7 @@ RENDERER_JS = r"""
         focusOn(node);
       }
       grp.addEventListener('click', e => {
-        const toggleOnly = hasKids && (e.target.classList?.contains('toggle') || isToggleHit(e, x, y, boxH));
+        const toggleOnly = hasKids && (e.target.classList?.contains('toggle') || isToggleHit(e, x, y, boxH, metrics.pad + toggleW));
         onActivate(e, toggleOnly);
       });
       grp.addEventListener('keydown', e => {
@@ -409,6 +416,17 @@ RENDERER_JS = r"""
     animateTo(cx - vw / 2, cy - vh / 2, tscale);
   }
 
+  function overview() {
+    hideTooltip();
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    lastLayouts.forEach(l => {
+      minX = Math.min(minX, l.x); minY = Math.min(minY, l.y);
+      maxX = Math.max(maxX, l.x + l.w); maxY = Math.max(maxY, l.y + l.boxH);
+    });
+    if (!isFinite(minX)) return;
+    animateTo(minX - 80, minY - 80, 1);
+  }
+
   function svgPoint(e) {
     const point = svg.createSVGPoint();
     point.x = e.clientX;
@@ -417,9 +435,9 @@ RENDERER_JS = r"""
     return ctm ? point.matrixTransform(ctm.inverse()) : { x: e.offsetX, y: e.offsetY };
   }
 
-  function isToggleHit(e, x, y, boxH) {
+  function isToggleHit(e, x, y, boxH, zone) {
     const point = svgPoint(e);
-    return point.x >= x && point.x <= x + 32 && point.y >= y && point.y <= y + boxH;
+    return point.x >= x && point.x <= x + (zone || 32) && point.y >= y && point.y <= y + boxH;
   }
 
   function tooltipText(node) {
@@ -518,10 +536,13 @@ RENDERER_JS = r"""
     state.layout = state.layout === 'centered' ? 'tree' : 'centered';
     resetView();
   };
-  document.getElementById('btn-reset').onclick = resetView;
+  document.getElementById('btn-reset').onclick = overview;
   document.getElementById('panel-close').onclick = () => { panel.hidden = true; };
+  const searchEl = document.getElementById('search');
+  const searchCount = document.getElementById('search-count');
   let preSearchCollapsed = null;
-  document.getElementById('search').oninput = e => {
+  let searchMatches = [], searchIdx = -1;
+  searchEl.oninput = e => {
     const q = e.target.value.toLowerCase().trim();
     if (q && !preSearchCollapsed) preSearchCollapsed = new Set(collapsed);
     if (!q && preSearchCollapsed) {
@@ -529,21 +550,36 @@ RENDERER_JS = r"""
       preSearchCollapsed.forEach(id => collapsed.add(id));
       preSearchCollapsed = null;
     }
-    let matches = 0;
+    searchMatches = [];
+    searchIdx = -1;
     function mark(n, ancestors) {
       n._hl = !!q && (n.label.toLowerCase().includes(q) || (n.note || '').toLowerCase().includes(q) || (n.summary || '').toLowerCase().includes(q));
       if (n._hl) {
-        matches++;
+        searchMatches.push(n);
         ancestors.forEach(id => collapsed.delete(id));
       }
       (n.children || []).forEach(c => mark(c, ancestors.concat(n.id)));
     }
     mark(data.root, []);
-    const counter = document.getElementById('search-count');
-    counter.textContent = q ? matches + (matches > 1 ? ' résultats' : ' résultat') : '';
-    counter.hidden = !q;
+    const m = searchMatches.length;
+    searchCount.textContent = q ? m + (m > 1 ? ' résultats' : ' résultat') + (m ? ' · Entrée ↵' : '') : '';
+    searchCount.hidden = !q;
     render();
   };
+  searchEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && searchMatches.length) {
+      e.preventDefault();
+      searchIdx = (searchIdx + (e.shiftKey ? -1 : 1) + searchMatches.length) % searchMatches.length;
+      focusOn(searchMatches[searchIdx]);
+      searchCount.textContent = (searchIdx + 1) + '/' + searchMatches.length;
+    } else if (e.key === 'Escape') {
+      searchEl.value = '';
+      searchEl.dispatchEvent(new Event('input'));
+    }
+  });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.activeElement !== searchEl) overview();
+  });
 
   const wrap = document.getElementById('canvas-wrap');
   wrap.addEventListener('wheel', e => {
@@ -577,6 +613,9 @@ RENDERER_JS = r"""
     render();
   });
   window.addEventListener('mouseup', () => { state.dragging = false; wrap.classList.remove('dragging'); });
+  wrap.addEventListener('dblclick', e => {
+    if (e.target === wrap || e.target === svg || e.target.tagName === 'path') overview();
+  });
 
   render();
 })();
