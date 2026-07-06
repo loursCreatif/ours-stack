@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "title": "Carte test valide",
+    "slug": "mind-map-valid",
+    "source": "tests/fixtures/mind-map-valid.json",
+    "preset": "warm",
+    "lang": "fr",
+    "generated": "2026-07-03",
+    "nodeCount": 4
+  },
+  "root": {
+    "id": "root",
+    "label": "Concept racine",
+    "type": "concept",
+    "summary": "Racine de la carte test avec branches détail, exemple et source.",
+    "children": [
+      {
+        "id": "detail-a",
+        "label": "Mécanisme principal",
+        "type": "detail",
+        "summary": "Le mécanisme central relie les concepts aux exemples concrets.",
+        "note": "Note avec accents français et tirets — URL https://example.com/doc. Cette note dépasse trois cents caractères pour valider la limite portée à six cents. Elle décrit le mécanisme en plusieurs phrases : première idée sur le lien concept-exemple, deuxième sur la traçabilité des sources, troisième sur la reformulation fidèle au texte d'origine sans invention de contenu.",
+        "children": [
+          {
+            "id": "example-a",
+            "label": "Exemple concret",
+            "type": "example",
+            "summary": "Illustration pratique du mécanisme principal.",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "src-a",
+        "label": "Source ouverte",
+        "type": "source",
+        "href": "https://example.com/article",
+        "summary": "Article de référence sur example.com.",
+        "children": []
+      }
+    ]
+  }
+}

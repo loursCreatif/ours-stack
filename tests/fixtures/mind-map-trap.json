@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "title": "<b>&</b> Titre piégé",
+    "slug": "mind-map-trap",
+    "source": "tests/fixtures/mind-map-trap.json",
+    "preset": "minimal",
+    "lang": "fr",
+    "generated": "2026-07-03",
+    "nodeCount": 2
+  },
+  "root": {
+    "id": "root",
+    "label": "Racine",
+    "type": "concept",
+    "children": [
+      {
+        "id": "trap-note",
+        "label": "Nœud piégé",
+        "type": "detail",
+        "summary": "Piège script : </script><script>alert(2)",
+        "note": "Fermeture script : </script><script>alert(1)</script> — doit rester dans le JSON.",
+        "children": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "title": "Carte large générique",
+    "slug": "mind-map-wide",
+    "source": "tests/fixtures/mind-map-wide.json",
+    "preset": "minimal",
+    "lang": "fr",
+    "generated": "2026-07-03",
+    "nodeCount": 11
+  },
+  "root": {
+    "id": "root",
+    "label": "Centre",
+    "type": "concept",
+    "summary": "Racine large avec cinq branches directes peu profondes.",
+    "children": [
+      {
+        "id": "branch-a",
+        "label": "Branche A",
+        "type": "detail",
+        "children": [
+          {
+            "id": "branch-a-detail",
+            "label": "Détail A",
+            "type": "example",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "branch-b",
+        "label": "Branche B",
+        "type": "detail",
+        "children": [
+          {
+            "id": "branch-b-detail",
+            "label": "Détail B",
+            "type": "example",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "branch-c",
+        "label": "Branche C",
+        "type": "detail",
+        "children": [
+          {
+            "id": "branch-c-detail",
+            "label": "Détail C",
+            "type": "example",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "branch-d",
+        "label": "Branche D",
+        "type": "detail",
+        "children": [
+          {
+            "id": "branch-d-detail",
+            "label": "Détail D",
+            "type": "example",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "branch-e",
+        "label": "Branche E",
+        "type": "detail",
+        "children": [
+          {
+            "id": "branch-e-detail",
+            "label": "Détail E",
+            "type": "example",
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
